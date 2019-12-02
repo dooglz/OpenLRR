@@ -3,7 +3,14 @@ cmake_minimum_required (VERSION 3.13)
 project (OpenLRR VERSION 1.0 LANGUAGES CXX)
 
 
-add_executable(OpenLRR src/main.cpp src/engine/Engine.cpp src/engine/Engine.h src/engine/platform/platform_glfw.cpp src/engine/platform/platform_glfw.h src/engine/graphics/vulkan.cpp src/engine/graphics/vulkan.h src/engine/graphics/graphics_backend.h src/game/game.cpp)
+add_executable(OpenLRR 
+src/main.cpp 
+src/engine/Engine.cpp src/engine/Engine.h 
+src/engine/platform/platform_glfw.cpp src/engine/platform/platform_glfw.h 
+src/engine/graphics/vk/vulkan.cpp  src/engine/graphics/vk/vulkan.h 
+src/engine/graphics/vk/vulkan_bootstrap.cpp src/engine/graphics/vk/vulkan_bootstrap.h
+src/engine/graphics/graphics_backend.h 
+src/game/game.cpp)
 
 
 target_compile_features(OpenLRR PUBLIC cxx_std_17)
@@ -13,6 +20,7 @@ set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "OpenLRR" )
 
 set(root ${CMAKE_CURRENT_SOURCE_DIR}/src)
 source_group(engine REGULAR_EXPRESSION "^.*src[\\|/]engine.*$")
+source_group(engine\\graphics REGULAR_EXPRESSION "^.*src[\\|/]engine[\\|/]graphics.*$")
 source_group(game REGULAR_EXPRESSION "^.*src[\\|/]game.*$")
 
 find_package(Vulkan REQUIRED)

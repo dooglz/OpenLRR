@@ -5,14 +5,11 @@
 #ifndef OPENLRR_VULKAN_H
 #define OPENLRR_VULKAN_H
 
-#include "graphics_backend.h"
+#include "../graphics_backend.h"
 
 class VulkanBackend : public GraphicsBackend{
 public:
-  void probe() override;
-
   void startup() override;
-
   void shutdown() override;
 };
 

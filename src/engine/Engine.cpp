@@ -4,12 +4,12 @@
 
 #include "Engine.h"
 #include "platform/platform_glfw.h"
-#include "graphics/vulkan.h"
+#include "graphics/vk/vulkan.h"
 
 VulkanBackend vk;
 
 void Engine::Startup() {
-  vk.probe();
+
 }
 
 void Engine::CreateWindow(int w, int h) {
@@ -18,6 +18,7 @@ void Engine::CreateWindow(int w, int h) {
 
 void Engine::Go() {
  bool go = true;
+ vk.startup();
  while(go){
   go &= !platform::shouldQuit();
   platform::tick();
@@ -25,5 +26,5 @@ void Engine::Go() {
 }
 
 void Engine::Shutdown() {
-
+	vk.shutdown();
 }

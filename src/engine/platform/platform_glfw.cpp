@@ -3,6 +3,7 @@
 //
 
 #include "platform_glfw.h"
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 static GLFWwindow* window;
@@ -13,7 +14,6 @@ void platform::init(int w, int h) {
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
  window = glfwCreateWindow(w, h, "Vulkan", nullptr, nullptr);
-
 }
 
 void platform::shutdown() {
@@ -31,3 +31,16 @@ void platform::tick() {
 bool platform::shouldQuit() {
   return glfwWindowShouldClose(window);
 }
+
+const char** platform::GetRequiredVKInstanceExtensions(unsigned int *count)
+{
+	
+	return glfwGetRequiredInstanceExtensions(count);
+}
+
+bool platform::CreateVKWindowSurface(void* Vkinstance,void* vkSurfaceKHR)
+{
+	return glfwCreateWindowSurface(*((VkInstance*)Vkinstance), window, nullptr, (VkSurfaceKHR*)vkSurfaceKHR) == VK_SUCCESS;
+
+}
+

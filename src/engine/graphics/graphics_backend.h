@@ -7,7 +7,6 @@
 
 class GraphicsBackend{
 public:
-  virtual void probe() =0;
   virtual void startup() =0;
   virtual void shutdown() =0;
 };

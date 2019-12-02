@@ -12,6 +12,10 @@ namespace platform {
  void tick();
 
  bool shouldQuit();
+
+ const char** GetRequiredVKInstanceExtensions(unsigned int *count);
+ bool CreateVKWindowSurface(void* Vkinstance, void* vkSurfaceKHR);
+
 }
 
 #endif //OPENLRR_PLATFORM_GLFW_H
