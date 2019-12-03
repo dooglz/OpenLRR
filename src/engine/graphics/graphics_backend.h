@@ -9,6 +9,8 @@ class GraphicsBackend{
 public:
   virtual void startup() =0;
   virtual void shutdown() =0;
+  virtual void drawFrame() = 0;
+  virtual void resize() = 0;
 };
 
 #endif //OPENLRR_GRAPHICS_BACKEND_H

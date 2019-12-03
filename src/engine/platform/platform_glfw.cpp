@@ -22,9 +22,17 @@ void platform::shutdown() {
   glfwTerminate();
 }
 
+void processInput(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+}
+
 void platform::tick() {
   //while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
+	processInput(window);
+
   //}
 }
 

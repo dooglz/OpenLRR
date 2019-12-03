@@ -2,20 +2,21 @@ cmake_minimum_required (VERSION 3.13)
 
 project (OpenLRR VERSION 1.0 LANGUAGES CXX)
 
-
+file(GLOB_RECURSE sourcefiles src/*.cpp src/*.h)
 add_executable(OpenLRR 
-src/main.cpp 
-src/engine/Engine.cpp src/engine/Engine.h 
-src/engine/platform/platform_glfw.cpp src/engine/platform/platform_glfw.h 
-src/engine/graphics/vk/vulkan.cpp  src/engine/graphics/vk/vulkan.h 
-src/engine/graphics/vk/vulkan_bootstrap.cpp src/engine/graphics/vk/vulkan_bootstrap.h
-src/engine/graphics/graphics_backend.h 
-src/game/game.cpp)
-
-
+${sourcefiles}
+)
 target_compile_features(OpenLRR PUBLIC cxx_std_17)
 set_target_properties(OpenLRR PROPERTIES CXX_EXTENSIONS OFF)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "OpenLRR" )
+#set(VS_DEBUGGER_WORKING_DIRECTORY  ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
+
+set_target_properties(OpenLRR PROPERTIES 
+	VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:OpenLRR>"
+	VS_DEBUGGER_COMMAND           "$<TARGET_FILE:OpenLRR>"
+	VS_DEBUGGER_ENVIRONMENT       "PATH=%PATH%;${CMAKE_PREFIX_PATH}/bin"
+)
+
 #set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(root ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -40,3 +41,24 @@ add_subdirectory(deps/glfw EXCLUDE_FROM_ALL)
 
 target_link_libraries (OpenLRR Vulkan::Vulkan glfw)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
+
+
+if(EXISTS "${Vulkan_INCLUDE_DIR}/../Bin32/glslc.exe")
+ get_filename_component(GLSLC "${Vulkan_INCLUDE_DIR}/../Bin32/glslc.exe" ABSOLUTE)
+else()
+ message("Can't find glslc")
+endif()
+
+file(GLOB shaderfiles ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/graphics/shaders/*.glsl.*)
+set(ShaderOutputDir ${CMAKE_BINARY_DIR}/$<CONFIGURATION>/res/shaders/)
+foreach(loop_var ${shaderfiles})
+	  string(REGEX REPLACE "(\.glsl|^.*shaders\/)" "" stripfile ${loop_var})
+	  set(spvout ${ShaderOutputDir}${stripfile}.spv)
+	  set(shaderCMD ${shaderCMD} ${GLSLC} $<SHELL_PATH:${loop_var}> -o $<SHELL_PATH:${spvout}> \r\n)
+endforeach(loop_var)
+
+add_custom_target(CompileShaders ALL 
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${ShaderOutputDir}
+	COMMAND ${shaderCMD}
+	COMMAND_EXPAND_LISTS
+)

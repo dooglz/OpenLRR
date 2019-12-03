@@ -1,7 +1,7 @@
 //
 // Created by Sam Serrels on 30/11/2019.
 //
-#include "vulkan_bootstrap.h"
+#include "vulkan_internals.h"
 #include <iostream>
 #include <vulkan/vulkan.h>
 #include "../../platform/platform_glfw.h"
@@ -9,15 +9,14 @@
 #include <optional>
 #include <string> 
 #include <set>
-#include "vulkan_bootstrap.h"
-
 
 //VkInfo* info;
 
 const bool enableValidationLayers = true;
 
 const std::vector<const char*> validationLayers = {
-"VK_LAYER_KHRONOS_validation"
+"VK_LAYER_KHRONOS_validation",
+"VK_LAYER_LUNARG_monitor"
 };
 const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -27,6 +26,15 @@ struct SwapChainSupportDetails {
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
 };
+struct QueueFamilyIndices {
+	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
+
+	bool isComplete() {
+		return graphicsFamily.has_value() && presentFamily.has_value();
+	}
+};
+
 
 static std::string BytesToString(unsigned long long byteCount)
 {
@@ -185,16 +193,7 @@ void SetupInstance(VkInfo& info) {
 	}
 }
 
-struct QueueFamilyIndices {
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-
-	bool isComplete() {
-		return graphicsFamily.has_value() && presentFamily.has_value();
-	}
-};
-
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkInfo& info) {
+QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice device, const VkInfo& info) {
 	QueueFamilyIndices indices;
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
@@ -466,7 +465,7 @@ std::unique_ptr<VkInfo> vk_Startup()
 	createImageViews(*info);
 	//
 
-	return std::unique_ptr<VkInfo>();
+	return info;
 }
 
 void vk_Shutdown(std::unique_ptr<VkInfo> info) {
@@ -486,4 +485,108 @@ void vk_Shutdown(std::unique_ptr<VkInfo> info) {
 	vkDestroySurfaceKHR(info->instance, info->surface, nullptr);
 	vkDestroyInstance(info->instance, nullptr);
 	info.reset();
+}
+
+std::unique_ptr<VkCmdInfo> createCommandPool(const VkInfo& info, const VkRenderPass& renderPass, const VkPipelineInfo& pipeline) {
+	std::unique_ptr<VkCmdInfo>  cmdI = std::make_unique<VkCmdInfo>();
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(info.physicalDevice, info);
+
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+
+	if (vkCreateCommandPool(info.device, &poolInfo, nullptr, &cmdI->commandPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create command pool!");
+	}
+
+	/// createCommandBuffers ()
+
+
+	cmdI->commandBuffers.resize(info.swapChainFramebuffers.size());
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = cmdI->commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = (uint32_t)cmdI->commandBuffers.size();
+
+	if (vkAllocateCommandBuffers(info.device, &allocInfo, cmdI->commandBuffers.data()) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate command buffers!");
+	}
+
+	for (size_t i = 0; i < cmdI->commandBuffers.size(); i++) {
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+		if (vkBeginCommandBuffer(cmdI->commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("failed to begin recording command buffer!");
+		}
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = renderPass;
+		renderPassInfo.framebuffer = info.swapChainFramebuffers[i];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = info.swapChainExtent;
+
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(cmdI->commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(cmdI->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
+
+		vkCmdDraw(cmdI->commandBuffers[i], 3, 1, 0, 0);
+
+		vkCmdEndRenderPass(cmdI->commandBuffers[i]);
+
+		if (vkEndCommandBuffer(cmdI->commandBuffers[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to record command buffer!");
+		}
+	}
+	return cmdI;
+
+	//
+
+}
+
+void vk_DestoryCommandPool(std::unique_ptr < VkCmdInfo>cmdI, VkInfo& info){
+	vkDestroyCommandPool(info.device, cmdI->commandPool, nullptr);
+}
+
+
+std::unique_ptr<VkSyncObjects>  createSyncObjects(VkInfo& info) {
+
+	std::unique_ptr<VkSyncObjects>  syncObj = std::make_unique<VkSyncObjects>();
+	syncObj->imageAvailableSemaphores.resize(syncObj->MAX_FRAMES_IN_FLIGHT);
+	syncObj->renderFinishedSemaphores.resize(syncObj->MAX_FRAMES_IN_FLIGHT);
+	syncObj->inFlightFences.resize(syncObj->MAX_FRAMES_IN_FLIGHT);
+	syncObj->imagesInFlight.resize(info.swapChainImages.size(), VK_NULL_HANDLE);
+
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (size_t i = 0; i < syncObj->MAX_FRAMES_IN_FLIGHT; i++) {
+		if (vkCreateSemaphore(info.device, &semaphoreInfo, nullptr, &syncObj->imageAvailableSemaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(info.device, &semaphoreInfo, nullptr, &syncObj->renderFinishedSemaphores[i]) != VK_SUCCESS ||
+			vkCreateFence(info.device, &fenceInfo, nullptr, &syncObj->inFlightFences[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create synchronization objects for a frame!");
+		}
+	}
+	return syncObj;
+}
+
+
+void vk_DestorySyncObjects(std::unique_ptr<VkSyncObjects> syncObj, VkInfo& info)
+{
+	for (size_t i = 0; i < syncObj->MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroySemaphore(info.device, syncObj->renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore(info.device, syncObj->imageAvailableSemaphores[i], nullptr);
+		vkDestroyFence(info.device, syncObj->inFlightFences[i], nullptr);
+	}
 }

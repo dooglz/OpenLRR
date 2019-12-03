@@ -22,6 +22,7 @@ void Engine::Go() {
  while(go){
   go &= !platform::shouldQuit();
   platform::tick();
+  vk.drawFrame();
  }
 }
 
