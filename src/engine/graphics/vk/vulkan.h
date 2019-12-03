@@ -7,7 +7,7 @@
 
 #include "../graphics_backend.h"
 
-class VulkanBackend : public GraphicsBackend{
+class VulkanBackend : public GraphicsBackend {
 public:
   void startup() override;
   void shutdown() override;
@@ -15,5 +15,4 @@ public:
   void resize() override;
 };
 
-
-#endif //OPENLRR_VULKAN_H
+#endif // OPENLRR_VULKAN_H

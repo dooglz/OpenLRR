@@ -5,17 +5,17 @@
 #ifndef OPENLRR_PLATFORM_GLFW_H
 #define OPENLRR_PLATFORM_GLFW_H
 namespace platform {
- void init(int w, int h);
+void init(int w, int h);
 
- void shutdown();
+void shutdown();
 
- void tick();
+void tick();
 
- bool shouldQuit();
+bool shouldQuit();
 
- const char** GetRequiredVKInstanceExtensions(unsigned int *count);
- bool CreateVKWindowSurface(void* Vkinstance, void* vkSurfaceKHR);
+const char** GetRequiredVKInstanceExtensions(unsigned int* count);
+// bool CreateVKWindowSurface(void* Vkinstance, void* vkSurfaceKHR);
 
-}
+} // namespace platform
 
-#endif //OPENLRR_PLATFORM_GLFW_H
+#endif // OPENLRR_PLATFORM_GLFW_H

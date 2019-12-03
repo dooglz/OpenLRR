@@ -5,13 +5,11 @@
 #ifndef OPENLRR_ENGINE_H
 #define OPENLRR_ENGINE_H
 
+namespace Engine {
+void Startup();
+void CreateWindow(int width, int height);
+void Go();
+void Shutdown();
+} // namespace Engine
 
-namespace Engine{
-   void Startup();
-  void CreateWindow(int width, int height);
-   void Go();
-   void Shutdown();
-}
-
-
-#endif //OPENLRR_ENGINE_H
+#endif // OPENLRR_ENGINE_H

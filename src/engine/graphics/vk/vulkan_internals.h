@@ -3,67 +3,86 @@
 //
 
 #pragma once
-#include <vulkan/vulkan.h>
-#include <vector>
 #include <memory>
+#include <vector>
+#include <vulkan/vulkan.hpp>
 
-struct VkInfo
-{
-	VkInstance instance;
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	VkDevice device; //AKA logical device
+// things that exist for whole applicaiton
+struct ContextInfo {
+  ContextInfo();
+  ~ContextInfo();
+  const vk::Instance instance;
+  const VkSurfaceKHR surface;
+  const VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+  VkDevice device; // AKA logical device
+  VkQueue graphicsQueue;
+  VkQueue presentQueue;
+  VkDebugUtilsMessengerEXT debugMessenger;
 
-	VkSurfaceKHR surface;
-
-	VkQueue graphicsQueue;
-	VkQueue presentQueue;
-
-	VkSwapchainKHR swapChain;
-	std::vector<VkImage> swapChainImages;
-	std::vector<VkImageView> swapChainImageViews;
-	std::vector<VkFramebuffer> swapChainFramebuffers;
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
-
-	VkDebugUtilsMessengerEXT debugMessenger;
+  // It's common that these two things are needed frequently
+  struct PhyDevSurfKHR {
+    const VkPhysicalDevice device;
+    const VkSurfaceKHR surface;
+  };
+  const PhyDevSurfKHR deviceKHR;
 };
 
-struct VkCmdInfo {
-	VkCommandPool commandPool;
-	std::vector<VkCommandBuffer> commandBuffers;
+// Things that change based on render conditions
+struct SwapChainInfo {
+  SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const VkDevice& logicalDevice);
+  ~SwapChainInfo();
+  std::vector<VkImage> swapChainImages;
+  VkFormat swapChainImageFormat;
+  VkExtent2D swapChainExtent;
+  const VkSwapchainKHR swapChain;
+  const std::vector<VkImageView> swapChainImageViews;
+  void InitFramebuffers(const VkRenderPass& renderPass);
+  std::vector<VkFramebuffer> swapChainFramebuffers;
+
+private:
+  // A SwapChainInfo can't exist without a device anyway, and it allows us to
+  // deconstruct ourtselves
+  const VkDevice& _logicalDevice;
 };
 
-std::unique_ptr<VkInfo> vk_Startup();
-void vk_Shutdown(std::unique_ptr<VkInfo>);
+struct Pipeline {
+  VkPipelineLayout pipelineLayout;
+  VkPipeline graphicsPipeline;
+  Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass);
+  ~Pipeline();
 
-struct VkPipelineInfo {
-	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
+private:
+  const VkDevice& _logicalDevice;
 };
 
-std::unique_ptr<VkPipelineInfo> vk_InitPipeline(const VkInfo& info, const VkRenderPass&);
-void vk_DestoryPipeline(std::unique_ptr<VkPipelineInfo>, const VkInfo& info);
+struct CmdPoolBuf {
+  VkCommandPool commandPool;
+  std::vector<VkCommandBuffer> commandBuffers;
+  CmdPoolBuf(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const VkDevice& device, const VkRenderPass& renderPass, const VkPipeline& graphicsPipeline,
+             const std::vector<VkFramebuffer>& swapChainFramebuffers, const VkExtent2D& swapChainExtent);
+  ~CmdPoolBuf();
 
-std::unique_ptr <VkRenderPass> vk_createRenderPass(const VkInfo& info);
-void vk_DestoryRenderPass(std::unique_ptr<VkRenderPass>, const VkInfo& info);
-
-void createFramebuffers(VkInfo& info, const VkRenderPass& renderPass);
-void vk_DestoryFramebuffer(VkInfo& info);
-
-std::unique_ptr<VkCmdInfo> createCommandPool(const VkInfo& info, const VkRenderPass& renderPass, const VkPipelineInfo& pipeline);
-void vk_DestoryCommandPool(std::unique_ptr < VkCmdInfo>,VkInfo& info);
-
-
-struct VkSyncObjects {
-	std::vector<VkSemaphore> imageAvailableSemaphores;
-	std::vector<VkSemaphore> renderFinishedSemaphores;
-	std::vector<VkFence> inFlightFences;
-	std::vector<VkFence> imagesInFlight;
-	size_t currentFrame = 0;
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+private:
+  const VkDevice& _logicalDevice;
 };
-std::unique_ptr<VkSyncObjects>  createSyncObjects(VkInfo& info);
-void vk_DestorySyncObjects(std::unique_ptr < VkSyncObjects>, VkInfo& info);
 
+struct SyncObjects {
+  std::vector<VkSemaphore> imageAvailableSemaphores;
+  std::vector<VkSemaphore> renderFinishedSemaphores;
+  std::vector<VkFence> inFlightFences;
+  std::vector<VkFence> imagesInFlight;
+  size_t currentFrame = 0;
+  static const int MAX_FRAMES_IN_FLIGHT = 2;
+  SyncObjects(const VkDevice& device, const std::vector<VkImage>& swapChainImages);
+  ~SyncObjects();
 
-void VKdrawFrame(const VkInfo& info, VkSyncObjects& sync, const VkCmdInfo& CommandPools);
+private:
+  const VkDevice& _logicalDevice;
+};
+
+// GLFW bridge, TODO make interface header
+VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
+vk::UniqueRenderPass createRenderPass(const vk::Device& device, const VkFormat& swapChainImageFormat);
+
+void drawFrameInternal(const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue, const VkSwapchainKHR& swapChain,
+                       const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync);
