@@ -4,6 +4,7 @@
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
 #include <iostream>
+#include <cmath>
 #include <optional>
 #include <set>
 #include <string>
@@ -14,7 +15,7 @@
 
 const bool enableValidationLayers = true;
 
-const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor"};
+const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 struct SwapChainSupportDetails {
   VkSurfaceCapabilitiesKHR capabilities;
@@ -472,8 +473,8 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const VkDe
       extent = cap.currentExtent;
     } else {
       VkExtent2D actualExtent = {1280, 720};
-      actualExtent.width = max(cap.minImageExtent.width, min(cap.maxImageExtent.width, actualExtent.width));
-      actualExtent.height = max(cap.minImageExtent.height, min(cap.maxImageExtent.height, actualExtent.height));
+      actualExtent.width = std::max(cap.minImageExtent.width,  std::min(cap.maxImageExtent.width, actualExtent.width));
+      actualExtent.height = std::max(cap.minImageExtent.height,  std::min(cap.maxImageExtent.height, actualExtent.height));
       extent = actualExtent;
     }
   }

@@ -7,9 +7,11 @@ add_executable(OpenLRR
 ${sourcefiles}
 )
 target_compile_features(OpenLRR PUBLIC cxx_std_17)
-set_target_properties(OpenLRR PROPERTIES CXX_EXTENSIONS OFF)
+set_target_properties(OpenLRR PROPERTIES CXX_EXTENSIONS ON)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "OpenLRR" )
 #set(VS_DEBUGGER_WORKING_DIRECTORY  ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
+set_target_properties(OpenLRR PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY $<CONFIG>)
 
 set_target_properties(OpenLRR PROPERTIES 
 	VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:OpenLRR>"
@@ -43,10 +45,12 @@ target_link_libraries (OpenLRR Vulkan::Vulkan glfw)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 
-if(EXISTS "${Vulkan_INCLUDE_DIR}/../Bin32/glslc.exe")
- get_filename_component(GLSLC "${Vulkan_INCLUDE_DIR}/../Bin32/glslc.exe" ABSOLUTE)
+find_program(GLSLC glslc )
+message(${GLSLC})
+if(EXISTS "${Vulkan_INCLUDE_DIR}/../Bin32/glslc")
+ get_filename_component(GLSLC "${Vulkan_INCLUDE_DIR}/../Bin32/glslc" ABSOLUTE)
 else()
- message("Can't find glslc")
+ message("Can't find glslc" )
 endif()
 
 file(GLOB shaderfiles ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/graphics/shaders/*.glsl.*)
@@ -54,11 +58,13 @@ set(ShaderOutputDir ${CMAKE_BINARY_DIR}/$<CONFIGURATION>/res/shaders/)
 foreach(loop_var ${shaderfiles})
 	  string(REGEX REPLACE "(\.glsl|^.*shaders\/)" "" stripfile ${loop_var})
 	  set(spvout ${ShaderOutputDir}${stripfile}.spv)
-	  set(shaderCMD ${shaderCMD} ${GLSLC} $<SHELL_PATH:${loop_var}> -o $<SHELL_PATH:${spvout}> \r\n)
+	  set(shaderCMD ${shaderCMD} ${GLSLC} $<SHELL_PATH:${loop_var}> -o $<SHELL_PATH:${spvout}> \r\n\t)
 endforeach(loop_var)
-
+message(${GLSLC})
+message(${shaderCMD})
 add_custom_target(CompileShaders ALL 
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${ShaderOutputDir}
 	COMMAND ${shaderCMD}
 	COMMAND_EXPAND_LISTS
 )
+add_dependencies(OpenLRR CompileShaders)
