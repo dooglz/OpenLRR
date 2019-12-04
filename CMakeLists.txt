@@ -66,5 +66,6 @@ add_custom_target(CompileShaders ALL
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${ShaderOutputDir}
 	COMMAND ${shaderCMD}
 	COMMAND_EXPAND_LISTS
+		SOURCES ${shaderfiles}
 )
 add_dependencies(OpenLRR CompileShaders)
