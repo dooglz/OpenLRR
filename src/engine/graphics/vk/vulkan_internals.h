@@ -3,10 +3,10 @@
 //
 
 #pragma once
+#include <glm/glm.hpp>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
-
 // things that exist for whole applicaiton
 struct ContextInfo {
   ContextInfo();
@@ -48,7 +48,8 @@ private:
 struct Pipeline {
   VkPipelineLayout pipelineLayout;
   VkPipeline graphicsPipeline;
-  Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass);
+  Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass,
+           const VkPipelineVertexInputStateCreateInfo& vertexInputInfo);
   ~Pipeline();
 
 private:
@@ -89,3 +90,45 @@ void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueu
 void RebuildSwapChain();
 // returns -1 if swapchain needs to be rebuilt.
 uint32_t WaitForAvilibleImage(const VkDevice& device, const VkSwapchainKHR& swapChain, SyncObjects& sync);
+
+template <class T> struct VertexDataFormat {
+  static vk::PipelineVertexInputStateCreateInfo getPipelineInputState() {
+    static vk::PipelineVertexInputStateCreateInfo a(
+		vk::PipelineVertexInputStateCreateFlags::Flags(), 1, T::getBindingDescription(),
+                                                    T::getAttributeDescriptions()->size(), T::getAttributeDescriptions()->data());
+
+    return a;
+  }
+};
+
+struct Vertex : public VertexDataFormat<Vertex> {
+  glm::vec2 pos;
+  glm::vec3 color;
+  Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
+
+  static const  vk::VertexInputBindingDescription* getBindingDescription() {
+    static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
+    return &b;
+  };
+  static const std::array<vk::VertexInputAttributeDescription, 2>* getAttributeDescriptions() {
+    const static std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = {
+        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
+        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, color))};
+    return &attributeDescriptions;
+  };
+};
+
+struct VertexBuffer {
+  vk::Buffer vertexBuffer;
+  vk::DeviceMemory vertexBufferMemory;
+  VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size, const uint32_t count);
+  ~VertexBuffer();
+
+  void UploadViaMap(void const* inputdata);
+
+   const uint32_t count;
+  const vk::DeviceSize size;
+private:
+  const VkDevice& _logicalDevice;
+
+};

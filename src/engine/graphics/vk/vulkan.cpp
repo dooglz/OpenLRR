@@ -5,6 +5,7 @@
 #include "vulkan.h"
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
+
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
@@ -29,7 +30,8 @@ void RebuildSwapChain() {
   renderPass = createRenderPass(ctx->device, swapchain->swapChainImageFormat);
   swapchain->InitFramebuffers(*renderPass);
   swapchain->InitFramebuffers(*renderPass);
-  pipeline = std::make_unique<Pipeline>(ctx->device, swapchain->swapChainExtent, *renderPass);
+
+  pipeline = std::make_unique<Pipeline>(ctx->device, swapchain->swapChainExtent, *renderPass, Vertex::getPipelineInputState());
   commandPools = std::make_unique<CmdPoolBuf>(ctx->deviceKHR, ctx->device, *renderPass, pipeline->graphicsPipeline, swapchain->swapChainFramebuffers,
                                               swapchain->swapChainExtent);
   std::cout << "swapchain Built" << std::endl;
@@ -71,3 +73,5 @@ void VulkanBackend::resize() {
   //	vkDeviceWaitIdle(vkinfo->device);
   std::cout << "VK recreate" << std::endl;
 }
+
+

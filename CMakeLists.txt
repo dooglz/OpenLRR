@@ -40,8 +40,9 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
 endif()
 
 add_subdirectory(deps/glfw EXCLUDE_FROM_ALL)
+add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
 
-target_link_libraries (OpenLRR Vulkan::Vulkan glfw)
+target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 
@@ -69,3 +70,6 @@ add_custom_target(CompileShaders ALL
 		SOURCES ${shaderfiles}
 )
 add_dependencies(OpenLRR CompileShaders)
+
+
+

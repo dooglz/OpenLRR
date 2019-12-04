@@ -41,7 +41,9 @@ static std::vector<char> readFile(const std::string& filename) {
   return buffer;
 }
 
-Pipeline::Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass) : _logicalDevice{device} {
+Pipeline::Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass,
+                   const VkPipelineVertexInputStateCreateInfo& vertexInputInfo)
+    : _logicalDevice{device} {
   auto vertShaderCode = readFile("res/shaders/basic.vert.spv");
   auto fragShaderCode = readFile("res/shaders/basic.frag.spv");
   ;
@@ -62,10 +64,10 @@ Pipeline::Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, co
 
   VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-  VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-  vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.vertexBindingDescriptionCount = 0;
-  vertexInputInfo.vertexAttributeDescriptionCount = 0;
+  //VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+  //vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  //vertexInputInfo.vertexBindingDescriptionCount = 0;
+  //vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
   inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -278,3 +280,4 @@ void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueu
 
   sync.currentFrame = (sync.currentFrame + 1) % SyncObjects::MAX_FRAMES_IN_FLIGHT;
 }
+

@@ -16,7 +16,7 @@
 
 const bool enableValidationLayers = true;
 
-const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+// const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 struct SwapChainSupportDetails {
   VkSurfaceCapabilitiesKHR capabilities;
@@ -84,30 +84,24 @@ SwapChainSupportDetails querySwapChainSupport(const VkPhysicalDevice& device, co
 
 SwapChainSupportDetails querySwapChainSupport(const ContextInfo::PhyDevSurfKHR& pds) { return querySwapChainSupport(pds.device, pds.surface); }
 
-bool checkValidationLayerSupport() {
-
+const char* checkValidationLayerSupport() {
+  const std::vector<const char*> coudHave{"VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_standard_validation"};
   uint32_t layerCount;
   vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
   std::vector<VkLayerProperties> availableLayers(layerCount);
   vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-  for (const char* layerName : validationLayers) {
+  for (const char* layerName : coudHave) {
     bool layerFound = false;
-
     for (const auto& layerProperties : availableLayers) {
       if (strcmp(layerName, layerProperties.layerName) == 0) {
         layerFound = true;
-        break;
+        return layerName;
       }
     }
-
-    if (!layerFound) {
-      return false;
-    }
   }
-
-  return true;
+  return "";
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -246,8 +240,8 @@ VkDevice createLogicalDevice(const VkPhysicalDevice& physicalDevice, const VkSur
   createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
   if (enableValidationLayers) {
-    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-    createInfo.ppEnabledLayerNames = validationLayers.data();
+    // createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    // createInfo.ppEnabledLayerNames = validationLayers.data();
   } else {
     createInfo.enabledLayerCount = 0;
   }
@@ -308,9 +302,17 @@ CmdPoolBuf::CmdPoolBuf(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const VkDev
 
     vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-    vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+	vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
+    vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+    //vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 
     vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -360,10 +362,6 @@ SyncObjects::~SyncObjects() {
 }
 
 vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) {
-  if (enableValidationLayers && !checkValidationLayerSupport()) {
-    throw std::runtime_error("validation layers requested, but not available!");
-  }
-
   vk::ApplicationInfo appInfo;
   appInfo.pApplicationName = "OpenLRR";
   appInfo.pEngineName = "OpenLRR";
@@ -383,8 +381,24 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
       extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
   }
+
+
+  const auto validationLayerName = checkValidationLayerSupport();
+  if (enableValidationLayers) {
+    if (validationLayerName == "") {
+      probe();
+      throw std::runtime_error("validation layers requested, but not available!");
+    } else {
+      instanceCreateInfo.enabledLayerCount = 1;
+      instanceCreateInfo.ppEnabledLayerNames = &(validationLayerName);
+    }
+  } else {
+    instanceCreateInfo.enabledLayerCount = 0;
+  }
+
   instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
+
   vk::Instance instance;
   try {
     instance = vk::createInstance(instanceCreateInfo, nullptr);
@@ -424,7 +438,7 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
 ContextInfo::ContextInfo()
     : instance{CreateInstance(&debugMessenger)}, surface{CreateVKWindowSurface(instance)}, physicalDevice{pickPhysicalDevice(instance, surface)},
       deviceKHR{physicalDevice, surface}, device{createLogicalDevice(physicalDevice, surface, graphicsQueue, presentQueue)} {
-  // probe();
+
   std::cout << "Context COOL" << std::endl;
 }
 
