@@ -215,12 +215,29 @@ void SwapChainInfo::InitFramebuffers(const VkRenderPass& renderPass) {
   std::cout << "framebuffer is cool" << std::endl;
 }
 
-void drawFrameInternal(const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue, const VkSwapchainKHR& swapChain,
-                       const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync) {
+uint32_t WaitForAvilibleImage(const VkDevice& device, const VkSwapchainKHR& swapChain, SyncObjects& sync) {
+  uint32_t imageIndex;
+  VkResult result =
+      vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], VK_NULL_HANDLE, &imageIndex);
+  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    std::cout << "SwapChain out of date" << std::endl;
+    // RebuildSwapChain();
+    // try now
+    return -1;
+    result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], VK_NULL_HANDLE, &imageIndex);
+  }
+
+  if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    throw std::runtime_error("failed to acquire swap chain image!");
+  }
+  return imageIndex;
+}
+
+void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue,
+                       const VkSwapchainKHR& swapChain, const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync) {
   vkWaitForFences(device, 1, &sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
 
-  uint32_t imageIndex;
-  vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], VK_NULL_HANDLE, &imageIndex);
+  // uint32_t imageIndex = WaitForAvilibleImage(device, swapChain, sync);
 
   if (sync.imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
     vkWaitForFences(device, 1, &sync.imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -235,7 +252,6 @@ void drawFrameInternal(const VkDevice& device, const VkQueue& graphicsQueue, con
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = waitSemaphores;
   submitInfo.pWaitDstStageMask = waitStages;
-
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
@@ -251,14 +267,11 @@ void drawFrameInternal(const VkDevice& device, const VkQueue& graphicsQueue, con
 
   VkPresentInfoKHR presentInfo = {};
   presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
   presentInfo.waitSemaphoreCount = 1;
   presentInfo.pWaitSemaphores = signalSemaphores;
-
   VkSwapchainKHR swapChains[] = {swapChain};
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = swapChains;
-
   presentInfo.pImageIndices = &imageIndex;
 
   vkQueuePresentKHR(presentQueue, &presentInfo);

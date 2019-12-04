@@ -1,10 +1,11 @@
 //
 // Created by Sam Serrels on 30/11/2019.
 //
+#define NOMINMAX
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
-#include <iostream>
 #include <cmath>
+#include <iostream>
 #include <optional>
 #include <set>
 #include <string>
@@ -472,9 +473,12 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const VkDe
     if (cap.currentExtent.width != UINT32_MAX) {
       extent = cap.currentExtent;
     } else {
-      VkExtent2D actualExtent = {1280, 720};
-      actualExtent.width = std::max(cap.minImageExtent.width,  std::min(cap.maxImageExtent.width, actualExtent.width));
-      actualExtent.height = std::max(cap.minImageExtent.height,  std::min(cap.maxImageExtent.height, actualExtent.height));
+
+      int width, height;
+      platform::GetFramebufferSize(&width, &height);
+      VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+      actualExtent.width = std::max(cap.minImageExtent.width, std::min(cap.maxImageExtent.width, actualExtent.width));
+      actualExtent.height = std::max(cap.minImageExtent.height, std::min(cap.maxImageExtent.height, actualExtent.height));
       extent = actualExtent;
     }
   }

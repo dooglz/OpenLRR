@@ -84,5 +84,8 @@ private:
 VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const VkFormat& swapChainImageFormat);
 
-void drawFrameInternal(const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue, const VkSwapchainKHR& swapChain,
-                       const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync);
+void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue,
+                       const VkSwapchainKHR& swapChain, const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync);
+void RebuildSwapChain();
+// returns -1 if swapchain needs to be rebuilt.
+uint32_t WaitForAvilibleImage(const VkDevice& device, const VkSwapchainKHR& swapChain, SyncObjects& sync);
