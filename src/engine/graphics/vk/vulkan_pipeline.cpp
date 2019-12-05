@@ -92,32 +92,26 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   vk::PipelineRasterizationStateCreateInfo rasterizer = {};
   rasterizer.depthClampEnable = VK_FALSE;
   rasterizer.rasterizerDiscardEnable = VK_FALSE;
-  rasterizer.polygonMode =  vk::PolygonMode::eFill;
+  rasterizer.polygonMode = vk::PolygonMode::eFill;
   rasterizer.lineWidth = 1.0f;
   rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-  rasterizer.frontFace =  vk::FrontFace::eClockwise;
+  rasterizer.frontFace = vk::FrontFace::eClockwise;
   rasterizer.depthBiasEnable = VK_FALSE;
 
   vk::PipelineMultisampleStateCreateInfo multisampling = {};
   multisampling.sampleShadingEnable = VK_FALSE;
   multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
 
-  const vk::PipelineColorBlendAttachmentState colorBlendAttachment
-          (
-                  false,                      // blendEnable
-                  vk::BlendFactor::eZero,     // srcColorBlendFactor
-                  vk::BlendFactor::eZero,     // dstColorBlendFactor
-                  vk::BlendOp::eAdd,          // colorBlendOp
-                  vk::BlendFactor::eZero,     // srcAlphaBlendFactor
-                  vk::BlendFactor::eZero,     // dstAlphaBlendFactor
-                  vk::BlendOp::eAdd,          // alphaBlendOp
-                  vk::ColorComponentFlags( // colorWriteMask
-                          vk::ColorComponentFlagBits::eR |
-                          vk::ColorComponentFlagBits::eG |
-                          vk::ColorComponentFlagBits::eB |
-                          vk::ColorComponentFlagBits::eA)
-          );
-
+  const vk::PipelineColorBlendAttachmentState colorBlendAttachment(
+      false,                   // blendEnable
+      vk::BlendFactor::eZero,  // srcColorBlendFactor
+      vk::BlendFactor::eZero,  // dstColorBlendFactor
+      vk::BlendOp::eAdd,       // colorBlendOp
+      vk::BlendFactor::eZero,  // srcAlphaBlendFactor
+      vk::BlendFactor::eZero,  // dstAlphaBlendFactor
+      vk::BlendOp::eAdd,       // alphaBlendOp
+      vk::ColorComponentFlags( // colorWriteMask
+          vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA));
 
   vk::PipelineColorBlendStateCreateInfo colorBlending;
   colorBlending.logicOpEnable = VK_FALSE;
@@ -155,7 +149,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
                   renderPass.get()                            // renderPass
           );*/
 
-  pipelineInfo.flags =vk::PipelineCreateFlags();
+  pipelineInfo.flags = vk::PipelineCreateFlags();
   pipelineInfo.stageCount = 2;
   pipelineInfo.pStages = shaderStages;
   pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -168,7 +162,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   pipelineInfo.renderPass = renderPass;
   pipelineInfo.subpass = 0;
 
-  graphicsPipeline = device.createGraphicsPipeline(nullptr,pipelineInfo);
+  graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineInfo);
 
   std::cout << "Pipeline is cool" << std::endl;
 
@@ -183,10 +177,9 @@ Pipeline::~Pipeline() {
 
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat) {
 
-  vk::AttachmentDescription colorAttachment ;
+  vk::AttachmentDescription colorAttachment;
   colorAttachment.samples = vk::SampleCountFlagBits::e1;
-  colorAttachment.loadOp = vk::AttachmentLoadOp::eClear,
-  colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+  colorAttachment.loadOp = vk::AttachmentLoadOp::eClear, colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
   colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
   colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
   colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
@@ -211,9 +204,7 @@ vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format
   return device.createRenderPassUnique(renderPassInfo);
 }
 
-void vk_DestoryRenderPass(std::unique_ptr<vk::RenderPass> rp, const vk::Device& device) {
-  device.destroyRenderPass(*rp);
-}
+void vk_DestoryRenderPass(std::unique_ptr<vk::RenderPass> rp, const vk::Device& device) { device.destroyRenderPass(*rp); }
 
 void SwapChainInfo::InitFramebuffers(const vk::RenderPass& renderPass) {
   swapChainFramebuffers.clear();
@@ -257,7 +248,7 @@ uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& 
 void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
                        const VkSwapchainKHR& swapChain, const std::vector<vk::CommandBuffer>& commandBuffers, SyncObjects& sync) {
 
-  device.waitForFences(1,&sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
+  device.waitForFences(1, &sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
 
   // uint32_t imageIndex = WaitForAvilibleImage(device, swapChain, sync);
 
@@ -279,7 +270,7 @@ void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
 
-  device.resetFences(1,&sync.inFlightFences[sync.currentFrame]);
+  device.resetFences(1, &sync.inFlightFences[sync.currentFrame]);
   graphicsQueue.submit(1, &submitInfo, sync.inFlightFences[sync.currentFrame]);
 
   vk::PresentInfoKHR presentInfo;

@@ -15,9 +15,9 @@ struct ContextInfo {
   const vk::Instance instance;
   const vk::SurfaceKHR surface;
   const vk::PhysicalDevice physicalDevice;
+  vk::Queue graphicsQueue;
+  vk::Queue presentQueue;
   vk::Device device; // AKA logical device
-  VkQueue graphicsQueue;
-  VkQueue presentQueue;
   VkDebugUtilsMessengerEXT debugMessenger;
 
   // It's common that these two things are needed frequently
@@ -28,7 +28,7 @@ struct ContextInfo {
   const PhyDevSurfKHR deviceKHR;
 };
 struct CmdPool {
-  VkCommandPool commandPool;
+  vk::CommandPool commandPool;
   CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device& device);
   ~CmdPool();
 
@@ -64,8 +64,6 @@ private:
   const vk::Device& _logicalDevice;
 };
 
-
-
 struct CmdBuffers {
   std::vector<vk::CommandBuffer> commandBuffers;
   CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
@@ -85,20 +83,21 @@ struct SyncObjects {
   static const int MAX_FRAMES_IN_FLIGHT = 2;
   SyncObjects(const vk::Device& device, const size_t swapChainImagesCount);
   ~SyncObjects();
+
 private:
   const vk::Device& _logicalDevice;
 };
 
 // GLFW bridge, TODO make interface headder
 VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
-//TODO, wrap in class
+// TODO, wrap in class
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
 
 template <class T> struct VertexDataFormat {
   static vk::PipelineVertexInputStateCreateInfo getPipelineInputState() {
     static vk::PipelineVertexInputStateCreateInfo a(vk::PipelineVertexInputStateCreateFlags(), 1, T::getBindingDescription(),
                                                     T::getAttributeDescriptions()->size(), T::getAttributeDescriptions()->data());
-    int ff =4;
+    int ff = 4;
     return a;
   }
 };
@@ -123,16 +122,21 @@ struct Vertex : public VertexDataFormat<Vertex> {
 struct VertexBuffer {
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  // const uint32_t count;
+  const vk::DeviceSize size;
+
   VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size);
   ~VertexBuffer();
   void UploadViaMap(void const* inputdata, size_t uploadSize);
-  // const uint32_t count;
-  const vk::DeviceSize size;
+  void CopyBuffer(const vk::CommandPool& cmdpool, const vk::Device& device, vk::Queue& graphicsQueu);
+  static void CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& dstBuffer, const vk::DeviceSize size, const vk::CommandPool& cmdpool,
+                                const vk::Device& device, vk::Queue& graphicsQueue);
 
 private:
   const vk::Device& _logicalDevice;
 };
-
 
 void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
                        const VkSwapchainKHR& swapChain, const std::vector<vk::CommandBuffer>& commandBuffers, SyncObjects& sync);

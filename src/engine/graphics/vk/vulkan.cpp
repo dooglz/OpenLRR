@@ -51,6 +51,7 @@ void VulkanBackend::startup() {
   // data
   vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size);
   vbuffer->UploadViaMap(vertices.data(), vertices_size);
+  vbuffer->CopyBuffer(cmdPool->commandPool, ctx->device, ctx->graphicsQueue);
 
   // render commands
   cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, pipeline->graphicsPipeline, vbuffer->vertexBuffer,

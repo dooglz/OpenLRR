@@ -95,21 +95,16 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
   return VK_FALSE;
 }
 
-QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice device, const VkSurfaceKHR& surface) {
+QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, const vk::SurfaceKHR& surface) {
   QueueFamilyIndices indices;
-  uint32_t queueFamilyCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-  std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+  std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
   int i = 0;
   for (const auto& queueFamily : queueFamilies) {
-    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+    if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
       indices.graphicsFamily = i;
     }
 
-    VkBool32 presentSupport = false;
-    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
+    VkBool32 presentSupport = device.getSurfaceSupportKHR(i, surface);
     if (presentSupport) {
       indices.presentFamily = i;
     }
@@ -194,7 +189,8 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
   return BestGPU;
 }
 
-vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, VkQueue& graphicsQueue, VkQueue& presentQueue) {
+vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, vk::Queue& graphicsQueue,
+                               vk::Queue& presentQueue) {
   QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
 
   std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
@@ -231,8 +227,8 @@ vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const V
   //   throw std::runtime_error("failed to create logical device!");
   // }
 
-  vkGetDeviceQueue(logicalDevice, indices.graphicsFamily.value(), 0, &graphicsQueue);
-  vkGetDeviceQueue(logicalDevice, indices.presentFamily.value(), 0, &presentQueue);
+  graphicsQueue = logicalDevice.getQueue(indices.graphicsFamily.value(), 0);
+  presentQueue = logicalDevice.getQueue(indices.presentFamily.value(), 0);
   std::cout << "Logical Device is cool" << std::endl;
   return logicalDevice;
 }
@@ -240,13 +236,9 @@ vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const V
 CmdPool::CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device& device) : _logicalDevice{device} {
   QueueFamilyIndices queueFamilyIndices = findQueueFamilies(PhyDevSurf);
 
-  VkCommandPoolCreateInfo poolInfo = {};
-  poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  vk::CommandPoolCreateInfo poolInfo = {};
   poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-  if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create command pool!");
-  }
+  commandPool = device.createCommandPool(poolInfo);
 }
 
 CmdPool::~CmdPool() {
@@ -261,8 +253,9 @@ void CmdBuffers::RecordCommands(const vk::Buffer& vbuf, uint32_t count, const vk
   vkCmdDraw(cmdBuffer, count, 1, 0, 0);
 }
 
-void CmdBuffers::Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent, const std::vector<vk::Framebuffer>& swapChainFramebuffers,
-                        const vk::Pipeline& graphicsPipeline, const vk::Buffer& vbuf, uint32_t vcount) {
+void CmdBuffers::Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
+                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const vk::Pipeline& graphicsPipeline, const vk::Buffer& vbuf,
+                        uint32_t vcount) {
   for (size_t i = 0; i < commandBuffers.size(); i++) {
 
     vk::CommandBufferBeginInfo beginInfo;
@@ -308,7 +301,7 @@ SyncObjects::SyncObjects(const vk::Device& device, const size_t swapChainImagesC
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
-    renderFinishedSemaphores[i]= device.createSemaphore(semaphoreInfo);
+    renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
     inFlightFences[i] = device.createFence(fenceInfo);
   }
 }
@@ -424,9 +417,7 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
   vk::SurfaceFormatKHR surfaceFormat;
   {
     for (const auto& availableFormat : swapChainSupport.formats) {
-      if (availableFormat.format == vk::Format::eB8G8R8A8Unorm
-      && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear
-      ) {
+      if (availableFormat.format == vk::Format::eB8G8R8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
         surfaceFormat = availableFormat;
         break;
       }
@@ -491,7 +482,7 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
   createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
   createInfo.presentMode = presentMode;
   createInfo.clipped = VK_TRUE;
-  //createInfo.oldSwapchain = VK_NULL_HANDLE;
+  // createInfo.oldSwapchain = VK_NULL_HANDLE;
   vk::SwapchainKHR swapChain = logicalDevice.createSwapchainKHR(createInfo, nullptr);
 
   swapChainImages = logicalDevice.getSwapchainImagesKHR(swapChain);
@@ -503,7 +494,7 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
 }
 
 std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image>& swapChainImages, const vk::Format& swapChainImageFormat,
-                                          vk::Device logicalDevice) {
+                                            vk::Device logicalDevice) {
   std::vector<vk::ImageView> swapChainImageViews;
   swapChainImageViews.resize(swapChainImages.size());
 
@@ -513,9 +504,12 @@ std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image>& swapCh
     createInfo.viewType = vk::ImageViewType::e2D;
     createInfo.format = swapChainImageFormat;
     createInfo.components.r = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.g = vk::ComponentSwizzle::eIdentity;;
-    createInfo.components.b = vk::ComponentSwizzle::eIdentity;;
-    createInfo.components.a = vk::ComponentSwizzle::eIdentity;;
+    createInfo.components.g = vk::ComponentSwizzle::eIdentity;
+    ;
+    createInfo.components.b = vk::ComponentSwizzle::eIdentity;
+    ;
+    createInfo.components.a = vk::ComponentSwizzle::eIdentity;
+    ;
     createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     createInfo.subresourceRange.baseMipLevel = 0;
     createInfo.subresourceRange.levelCount = 1;
