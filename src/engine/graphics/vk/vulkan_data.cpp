@@ -8,7 +8,6 @@
 #include <iostream>
 #include <vulkan/vulkan.h>
 
-const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 // size = sizeof(vertices[0]) * vertices.size();
 
 uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties, const vk::PhysicalDevice& pdevice) {
@@ -23,7 +22,7 @@ uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& prop
 }
 
 VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size)
-    : _logicalDevice(device), size{size} {
+    : _logicalDevice{device}, size{size} {
   vk::BufferCreateInfo bufferInfo;
   bufferInfo.size = size;
   bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
@@ -35,6 +34,7 @@ VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& p
 
   vk::MemoryRequirements memRequirements;
   device.getBufferMemoryRequirements(vertexBuffer, &memRequirements);
+
   vk::MemoryAllocateInfo allocInfo;
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex =
@@ -52,9 +52,12 @@ VertexBuffer::~VertexBuffer() {
   vkFreeMemory(_logicalDevice, vertexBufferMemory, nullptr);
 }
 
-void VertexBuffer::UploadViaMap(void const* inputdata) {
-  void* data;
-  vkMapMemory(_logicalDevice, vertexBufferMemory, 0, size, 0, &data);
-  memcpy(data, vertices.data(), (size_t)size);
-  vkUnmapMemory(_logicalDevice, vertexBufferMemory);
+void VertexBuffer::UploadViaMap(void const* inputdata, size_t uploadSize) {
+
+  if (uploadSize != size) {
+    throw std::runtime_error("Yo you got the size wrong bro!");
+  }
+  void* data = _logicalDevice.mapMemory(vertexBufferMemory, 0, size);
+  memcpy(data, inputdata, uploadSize);
+  _logicalDevice.unmapMemory(vertexBufferMemory);
 }

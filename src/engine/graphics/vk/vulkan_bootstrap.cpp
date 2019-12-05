@@ -174,7 +174,7 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
     }
   }
 
-  VkDeviceSize biggestRamAmount = 0;
+  vk::DeviceSize biggestRamAmount = 0;
   VkPhysicalDevice BestGPU = VK_NULL_HANDLE;
 
   std::cout << "comaptible GPU devices:"
@@ -183,7 +183,7 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
   for (const auto g : compatableDevices) {
     VkPhysicalDeviceProperties dp;
     vkGetPhysicalDeviceProperties(g, &dp);
-    VkDeviceSize memsize = 0;
+    vk::DeviceSize memsize = 0;
     {
       auto memoryProps = VkPhysicalDeviceMemoryProperties{};
       vkGetPhysicalDeviceMemoryProperties(g, &memoryProps);
@@ -210,27 +210,24 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
   return BestGPU;
 }
 
-VkDevice createLogicalDevice(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, VkQueue& graphicsQueue, VkQueue& presentQueue) {
+vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, VkQueue& graphicsQueue, VkQueue& presentQueue) {
   QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
 
-  std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+  std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
   std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
   float queuePriority = 1.0f;
   for (uint32_t queueFamily : uniqueQueueFamilies) {
-    VkDeviceQueueCreateInfo queueCreateInfo = {};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    vk::DeviceQueueCreateInfo queueCreateInfo = {};
     queueCreateInfo.queueFamilyIndex = queueFamily;
     queueCreateInfo.queueCount = 1;
     queueCreateInfo.pQueuePriorities = &queuePriority;
     queueCreateInfos.push_back(queueCreateInfo);
   }
 
-  VkPhysicalDeviceFeatures deviceFeatures = {};
+  vk::PhysicalDeviceFeatures deviceFeatures = {};
 
-  VkDeviceCreateInfo createInfo = {};
-  createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
+  vk::DeviceCreateInfo createInfo = {};
   createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
   createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
@@ -245,10 +242,10 @@ VkDevice createLogicalDevice(const VkPhysicalDevice& physicalDevice, const VkSur
   } else {
     createInfo.enabledLayerCount = 0;
   }
-  VkDevice logicalDevice;
-  if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create logical device!");
-  }
+  vk::Device logicalDevice = physicalDevice.createDevice(createInfo, nullptr);
+  // if ( != vk::Result::eSuccess) {
+  //   throw std::runtime_error("failed to create logical device!");
+  // }
 
   vkGetDeviceQueue(logicalDevice, indices.graphicsFamily.value(), 0, &graphicsQueue);
   vkGetDeviceQueue(logicalDevice, indices.presentFamily.value(), 0, &presentQueue);
@@ -256,9 +253,7 @@ VkDevice createLogicalDevice(const VkPhysicalDevice& physicalDevice, const VkSur
   return logicalDevice;
 }
 
-CmdPoolBuf::CmdPoolBuf(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const VkDevice& device, const VkRenderPass& renderPass,
-                       const VkPipeline& graphicsPipeline, const std::vector<VkFramebuffer>& swapChainFramebuffers, const VkExtent2D& swapChainExtent)
-    : _logicalDevice{device} {
+CmdPool::CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device& device) : _logicalDevice{device} {
   QueueFamilyIndices queueFamilyIndices = findQueueFamilies(PhyDevSurf);
 
   VkCommandPoolCreateInfo poolInfo = {};
@@ -268,70 +263,60 @@ CmdPoolBuf::CmdPoolBuf(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const VkDev
   if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
     throw std::runtime_error("failed to create command pool!");
   }
+}
 
-  commandBuffers.resize(swapChainFramebuffers.size());
+CmdPool::~CmdPool() {
+  vkDestroyCommandPool(_logicalDevice, commandPool, nullptr);
+  // commandBuffers.clear();
+}
 
-  VkCommandBufferAllocateInfo allocInfo = {};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.commandPool = commandPool;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+void CmdBuffers::RecordCommands(const vk::Buffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer) {
+  VkBuffer vertexBuffers[] = {vbuf};
+  vk::DeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
+  vkCmdDraw(cmdBuffer, count, 1, 0, 0);
+}
 
-  if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-    throw std::runtime_error("failed to allocate command buffers!");
-  }
-
+void CmdBuffers::Record(const VkRenderPass& renderPass, const VkExtent2D& swapChainExtent, const std::vector<VkFramebuffer>& swapChainFramebuffers,
+                        const VkPipeline& graphicsPipeline, const vk::Buffer& vbuf, uint32_t vcount) {
   for (size_t i = 0; i < commandBuffers.size(); i++) {
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
-      throw std::runtime_error("failed to begin recording command buffer!");
-    }
+    vk::CommandBufferBeginInfo beginInfo;
+    commandBuffers[i].begin(beginInfo);
 
-    VkRenderPassBeginInfo renderPassInfo = {};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    vk::RenderPassBeginInfo renderPassInfo;
     renderPassInfo.renderPass = renderPass;
     renderPassInfo.framebuffer = swapChainFramebuffers[i];
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = swapChainExtent;
-
-    VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
+    commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-    vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
+    RecordCommands(vbuf, vcount, commandBuffers[i]);
 
-
-	vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-
-    vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-
-    //vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
-
-    vkCmdEndRenderPass(commandBuffers[i]);
-
-    if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-      throw std::runtime_error("failed to record command buffer!");
-    }
+    commandBuffers[i].endRenderPass();
+    commandBuffers[i].end();
   }
 }
 
-CmdPoolBuf::~CmdPoolBuf() {
-  vkDestroyCommandPool(_logicalDevice, commandPool, nullptr);
-  commandBuffers.clear();
+CmdBuffers::CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount) {
+  commandBuffers.resize(amount);
+  vk::CommandBufferAllocateInfo allocInfo;
+  allocInfo.commandPool = pool;
+  allocInfo.level = vk::CommandBufferLevel::ePrimary;
+  allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+  commandBuffers = device.allocateCommandBuffers(allocInfo);
 }
 
-SyncObjects::SyncObjects(const VkDevice& device, const std::vector<VkImage>& swapChainImages) : _logicalDevice{device} {
+SyncObjects::SyncObjects(const vk::Device& device, const size_t swapChainImagesCount) : _logicalDevice{device} {
   imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
   renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
   inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-  imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
+  imagesInFlight.resize(swapChainImagesCount, VK_NULL_HANDLE);
 
   VkSemaphoreCreateInfo semaphoreInfo = {};
   semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -381,7 +366,6 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
       extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
   }
-
 
   const auto validationLayerName = checkValidationLayerSupport();
   if (enableValidationLayers) {
@@ -453,7 +437,7 @@ ContextInfo::~ContextInfo() {
   vkDestroyInstance(instance, nullptr);
 }
 
-VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const VkDevice& logicalDevice, std::vector<VkImage>& swapChainImages,
+VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, std::vector<VkImage>& swapChainImages,
                                VkFormat& swapChainImageFormat, VkExtent2D& swapChainExtent) {
 
   SwapChainSupportDetails swapChainSupport = querySwapChainSupport(pds);
@@ -546,7 +530,8 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const VkDe
   return swapChain;
 }
 
-std::vector<VkImageView> createImageViews(const std::vector<VkImage>& swapChainImages, const VkFormat& swapChainImageFormat, VkDevice logicalDevice) {
+std::vector<VkImageView> createImageViews(const std::vector<VkImage>& swapChainImages, const VkFormat& swapChainImageFormat,
+                                          vk::Device logicalDevice) {
   std::vector<VkImageView> swapChainImageViews;
   swapChainImageViews.resize(swapChainImages.size());
 
@@ -573,7 +558,7 @@ std::vector<VkImageView> createImageViews(const std::vector<VkImage>& swapChainI
   return swapChainImageViews;
 }
 
-SwapChainInfo::SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const VkDevice& logicalDevice)
+SwapChainInfo::SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice)
     : swapChain{createSwapChain(pds, logicalDevice, swapChainImages, swapChainImageFormat, swapChainExtent)},
       swapChainImageViews{createImageViews(swapChainImages, swapChainImageFormat, logicalDevice)}, _logicalDevice{logicalDevice} {
   std::cout << "SWAP CHAIN COOL" << std::endl;

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
-VkShaderModule createShaderModule(const std::vector<char>& code, const VkDevice& device) {
+VkShaderModule createShaderModule(const std::vector<char>& code, const vk::Device& device) {
   VkShaderModuleCreateInfo createInfo = {};
   createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   createInfo.codeSize = code.size();
@@ -41,7 +41,7 @@ static std::vector<char> readFile(const std::string& filename) {
   return buffer;
 }
 
-Pipeline::Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass,
+Pipeline::Pipeline(const vk::Device& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass,
                    const VkPipelineVertexInputStateCreateInfo& vertexInputInfo)
     : _logicalDevice{device} {
   auto vertShaderCode = readFile("res/shaders/basic.vert.spv");
@@ -64,10 +64,10 @@ Pipeline::Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, co
 
   VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-  //VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-  //vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  //vertexInputInfo.vertexBindingDescriptionCount = 0;
-  //vertexInputInfo.vertexAttributeDescriptionCount = 0;
+  // VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+  // vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  // vertexInputInfo.vertexBindingDescriptionCount = 0;
+  // vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
   inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -192,7 +192,7 @@ vk::UniqueRenderPass createRenderPass(const vk::Device& device, const VkFormat& 
   return device.createRenderPassUnique(renderPassInfo);
 }
 
-void vk_DestoryRenderPass(std::unique_ptr<VkRenderPass> rp, const VkDevice& device) { vkDestroyRenderPass(device, *rp, nullptr); }
+void vk_DestoryRenderPass(std::unique_ptr<VkRenderPass> rp, const vk::Device& device) { vkDestroyRenderPass(device, *rp, nullptr); }
 
 void SwapChainInfo::InitFramebuffers(const VkRenderPass& renderPass) {
   swapChainFramebuffers.clear();
@@ -217,7 +217,7 @@ void SwapChainInfo::InitFramebuffers(const VkRenderPass& renderPass) {
   std::cout << "framebuffer is cool" << std::endl;
 }
 
-uint32_t WaitForAvilibleImage(const VkDevice& device, const VkSwapchainKHR& swapChain, SyncObjects& sync) {
+uint32_t WaitForAvilibleImage(const vk::Device& device, const VkSwapchainKHR& swapChain, SyncObjects& sync) {
   uint32_t imageIndex;
   VkResult result =
       vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -235,8 +235,8 @@ uint32_t WaitForAvilibleImage(const VkDevice& device, const VkSwapchainKHR& swap
   return imageIndex;
 }
 
-void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue,
-                       const VkSwapchainKHR& swapChain, const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync) {
+void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
+                       const VkSwapchainKHR& swapChain, const std::vector<vk::CommandBuffer>& commandBuffers, SyncObjects& sync) {
   vkWaitForFences(device, 1, &sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
 
   // uint32_t imageIndex = WaitForAvilibleImage(device, swapChain, sync);
@@ -246,38 +246,32 @@ void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueu
   }
   sync.imagesInFlight[imageIndex] = sync.inFlightFences[sync.currentFrame];
 
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-  VkSemaphore waitSemaphores[] = {sync.imageAvailableSemaphores[sync.currentFrame]};
-  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  vk::SubmitInfo submitInfo;
+  vk::Semaphore waitSemaphores[] = {sync.imageAvailableSemaphores[sync.currentFrame]};
+  vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = waitSemaphores;
   submitInfo.pWaitDstStageMask = waitStages;
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
-  VkSemaphore signalSemaphores[] = {sync.renderFinishedSemaphores[sync.currentFrame]};
+  vk::Semaphore signalSemaphores[] = {sync.renderFinishedSemaphores[sync.currentFrame]};
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
 
   vkResetFences(device, 1, &sync.inFlightFences[sync.currentFrame]);
 
-  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, sync.inFlightFences[sync.currentFrame]) != VK_SUCCESS) {
-    throw std::runtime_error("failed to submit draw command buffer!");
-  }
+  graphicsQueue.submit(1, &submitInfo, sync.inFlightFences[sync.currentFrame]);
 
-  VkPresentInfoKHR presentInfo = {};
-  presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+  vk::PresentInfoKHR presentInfo;
   presentInfo.waitSemaphoreCount = 1;
   presentInfo.pWaitSemaphores = signalSemaphores;
-  VkSwapchainKHR swapChains[] = {swapChain};
+  vk::SwapchainKHR swapChains[] = {swapChain};
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = swapChains;
   presentInfo.pImageIndices = &imageIndex;
 
-  vkQueuePresentKHR(presentQueue, &presentInfo);
+  presentQueue.presentKHR(&presentInfo);
 
   sync.currentFrame = (sync.currentFrame + 1) % SyncObjects::MAX_FRAMES_IN_FLIGHT;
 }
-

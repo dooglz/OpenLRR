@@ -26,7 +26,6 @@ void Engine::Go() {
   } catch (const std::exception& e) {
     std::cerr << "FAIL" << e.what() << std::endl;
   }
-
 }
 
 void Engine::Shutdown() { vk.shutdown(); }

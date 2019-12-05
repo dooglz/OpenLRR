@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+
 // things that exist for whole applicaiton
 struct ContextInfo {
   ContextInfo();
@@ -14,7 +15,7 @@ struct ContextInfo {
   const vk::Instance instance;
   const VkSurfaceKHR surface;
   const VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-  VkDevice device; // AKA logical device
+  vk::Device device; // AKA logical device
   VkQueue graphicsQueue;
   VkQueue presentQueue;
   VkDebugUtilsMessengerEXT debugMessenger;
@@ -26,10 +27,17 @@ struct ContextInfo {
   };
   const PhyDevSurfKHR deviceKHR;
 };
+struct CmdPool {
+  VkCommandPool commandPool;
+  CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device& device);
+  ~CmdPool();
 
+private:
+  const vk::Device& _logicalDevice;
+};
 // Things that change based on render conditions
 struct SwapChainInfo {
-  SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const VkDevice& logicalDevice);
+  SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice);
   ~SwapChainInfo();
   std::vector<VkImage> swapChainImages;
   VkFormat swapChainImageFormat;
@@ -42,29 +50,30 @@ struct SwapChainInfo {
 private:
   // A SwapChainInfo can't exist without a device anyway, and it allows us to
   // deconstruct ourtselves
-  const VkDevice& _logicalDevice;
+  const vk::Device& _logicalDevice;
 };
 
 struct Pipeline {
   VkPipelineLayout pipelineLayout;
   VkPipeline graphicsPipeline;
-  Pipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass,
+  Pipeline(const vk::Device& device, const VkExtent2D& swapChainExtent, const VkRenderPass& renderPass,
            const VkPipelineVertexInputStateCreateInfo& vertexInputInfo);
   ~Pipeline();
 
 private:
-  const VkDevice& _logicalDevice;
+  const vk::Device& _logicalDevice;
 };
 
-struct CmdPoolBuf {
-  VkCommandPool commandPool;
-  std::vector<VkCommandBuffer> commandBuffers;
-  CmdPoolBuf(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const VkDevice& device, const VkRenderPass& renderPass, const VkPipeline& graphicsPipeline,
-             const std::vector<VkFramebuffer>& swapChainFramebuffers, const VkExtent2D& swapChainExtent);
-  ~CmdPoolBuf();
+
+
+struct CmdBuffers {
+  std::vector<vk::CommandBuffer> commandBuffers;
+  CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
+  void Record(const VkRenderPass& renderPass, const VkExtent2D& swapChainExtent, const std::vector<VkFramebuffer>& swapChainFramebuffers,
+              const VkPipeline& graphicsPipeline, const vk::Buffer& vbuf, uint32_t vcount);
 
 private:
-  const VkDevice& _logicalDevice;
+  void RecordCommands(const vk::Buffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer);
 };
 
 struct SyncObjects {
@@ -74,27 +83,20 @@ struct SyncObjects {
   std::vector<VkFence> imagesInFlight;
   size_t currentFrame = 0;
   static const int MAX_FRAMES_IN_FLIGHT = 2;
-  SyncObjects(const VkDevice& device, const std::vector<VkImage>& swapChainImages);
+  SyncObjects(const vk::Device& device, const size_t swapChainImagesCount);
   ~SyncObjects();
-
 private:
-  const VkDevice& _logicalDevice;
+  const vk::Device& _logicalDevice;
 };
 
-// GLFW bridge, TODO make interface header
+// GLFW bridge, TODO make interface headder
 VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
+//TODO, wrap in class
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const VkFormat& swapChainImageFormat);
-
-void drawFrameInternal(uint32_t imageIndex, const VkDevice& device, const VkQueue& graphicsQueue, const VkQueue& presentQueue,
-                       const VkSwapchainKHR& swapChain, const std::vector<VkCommandBuffer>& commandBuffers, SyncObjects& sync);
-void RebuildSwapChain();
-// returns -1 if swapchain needs to be rebuilt.
-uint32_t WaitForAvilibleImage(const VkDevice& device, const VkSwapchainKHR& swapChain, SyncObjects& sync);
 
 template <class T> struct VertexDataFormat {
   static vk::PipelineVertexInputStateCreateInfo getPipelineInputState() {
-    static vk::PipelineVertexInputStateCreateInfo a(
-		vk::PipelineVertexInputStateCreateFlags::Flags(), 1, T::getBindingDescription(),
+    static vk::PipelineVertexInputStateCreateInfo a(vk::PipelineVertexInputStateCreateFlags::Flags(), 1, T::getBindingDescription(),
                                                     T::getAttributeDescriptions()->size(), T::getAttributeDescriptions()->data());
 
     return a;
@@ -106,7 +108,7 @@ struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 color;
   Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
 
-  static const  vk::VertexInputBindingDescription* getBindingDescription() {
+  static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
   };
@@ -121,14 +123,19 @@ struct Vertex : public VertexDataFormat<Vertex> {
 struct VertexBuffer {
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
-  VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size, const uint32_t count);
+  VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size);
   ~VertexBuffer();
-
-  void UploadViaMap(void const* inputdata);
-
-   const uint32_t count;
+  void UploadViaMap(void const* inputdata, size_t uploadSize);
+  // const uint32_t count;
   const vk::DeviceSize size;
-private:
-  const VkDevice& _logicalDevice;
 
+private:
+  const vk::Device& _logicalDevice;
 };
+
+
+void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
+                       const VkSwapchainKHR& swapChain, const std::vector<vk::CommandBuffer>& commandBuffers, SyncObjects& sync);
+void RebuildSwapChain();
+// returns -1 if swapchain needs to be rebuilt.
+uint32_t WaitForAvilibleImage(const vk::Device& device, const VkSwapchainKHR& swapChain, SyncObjects& sync);
