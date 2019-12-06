@@ -246,49 +246,6 @@ CmdPool::~CmdPool() {
   // commandBuffers.clear();
 }
 
-void CmdBuffers::RecordCommands(const vk::Buffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer) {
-  VkBuffer vertexBuffers[] = {vbuf};
-  vk::DeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
-  vkCmdDraw(cmdBuffer, count, 1, 0, 0);
-}
-
-void CmdBuffers::Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
-                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const vk::Pipeline& graphicsPipeline, const vk::Buffer& vbuf,
-                        uint32_t vcount) {
-  for (size_t i = 0; i < commandBuffers.size(); i++) {
-
-    vk::CommandBufferBeginInfo beginInfo;
-    commandBuffers[i].begin(beginInfo);
-
-    vk::RenderPassBeginInfo renderPassInfo;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapChainFramebuffers[i];
-    renderPassInfo.renderArea.offset = vk::Offset2D(0, 0);
-    renderPassInfo.renderArea.extent = swapChainExtent;
-    vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues = &clearColor;
-    commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-    commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-
-    RecordCommands(vbuf, vcount, commandBuffers[i]);
-
-    commandBuffers[i].endRenderPass();
-    commandBuffers[i].end();
-  }
-}
-
-CmdBuffers::CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount) {
-  commandBuffers.resize(amount);
-  vk::CommandBufferAllocateInfo allocInfo;
-  allocInfo.commandPool = pool;
-  allocInfo.level = vk::CommandBufferLevel::ePrimary;
-  allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
-  commandBuffers = device.allocateCommandBuffers(allocInfo);
-}
-
 SyncObjects::SyncObjects(const vk::Device& device, const size_t swapChainImagesCount) : _logicalDevice{device} {
   imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
   renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);

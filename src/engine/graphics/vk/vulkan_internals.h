@@ -64,16 +64,6 @@ private:
   const vk::Device& _logicalDevice;
 };
 
-struct CmdBuffers {
-  std::vector<vk::CommandBuffer> commandBuffers;
-  CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
-  void Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent, const std::vector<vk::Framebuffer>& swapChainFramebuffers,
-              const vk::Pipeline& graphicsPipeline, const vk::Buffer& vbuf, uint32_t vcount);
-
-private:
-  void RecordCommands(const vk::Buffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer);
-};
-
 struct SyncObjects {
   std::vector<vk::Semaphore> imageAvailableSemaphores;
   std::vector<vk::Semaphore> renderFinishedSemaphores;
@@ -119,23 +109,31 @@ struct Vertex : public VertexDataFormat<Vertex> {
   };
 };
 
+// Quanity of data is immutable, content can be re-uploaded.
 struct VertexBuffer {
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-  // const uint32_t count;
-  const vk::DeviceSize size;
+  vk::Buffer indexBuffer;
+  vk::DeviceMemory indexBufferMemory;
+  // total size of data
+  const vk::DeviceSize size_vertex;
+  const vk::DeviceSize size_index;
 
-  VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size);
+  VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size_vertex, const vk::DeviceSize size_index);
   ~VertexBuffer();
-  void UploadViaMap(void const* inputdata, size_t uploadSize);
-  void CopyBuffer(const vk::CommandPool& cmdpool, const vk::Device& device, vk::Queue& graphicsQueu);
+
+  void UploadVertex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue);
+  void UploadIndex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue);
+
+  // void CopyBuffer(const vk::CommandPool& cmdpool, const vk::Device& device, vk::Queue& graphicsQueu);
   static void CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& dstBuffer, const vk::DeviceSize size, const vk::CommandPool& cmdpool,
                                 const vk::Device& device, vk::Queue& graphicsQueue);
+  static void UploadGeneric(void const* inputdata, size_t uploadSize, vk::Buffer& buffer, const vk::Device& device,
+                            const vk::PhysicalDevice& physicalDevice, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue);
 
 private:
   const vk::Device& _logicalDevice;
+  const vk::PhysicalDevice& _physicalDevice;
 };
 
 void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
@@ -143,3 +141,13 @@ void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::
 void RebuildSwapChain();
 // returns -1 if swapchain needs to be rebuilt.
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync);
+
+struct CmdBuffers {
+  std::vector<vk::CommandBuffer> commandBuffers;
+  CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
+  void Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent, const std::vector<vk::Framebuffer>& swapChainFramebuffers,
+              const vk::Pipeline& graphicsPipeline, const VertexBuffer& vbuf, uint32_t vcount);
+
+private:
+  void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBufferr);
+};

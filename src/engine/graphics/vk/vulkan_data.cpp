@@ -42,34 +42,50 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
   return devmem;
 }
 
-VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size)
-    : _logicalDevice{device}, size{size} {
-
-  stagingBuffer = createBuffer(device, size, vk::BufferUsageFlagBits::eTransferSrc);
-  stagingBufferMemory =
-      AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer);
-  vertexBuffer = createBuffer(device, size, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
+VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size_vertex,
+                           const vk::DeviceSize size_index)
+    : _logicalDevice{device}, _physicalDevice{pdevice}, size_vertex{size_vertex}, size_index{size_index} {
+  vertexBuffer = createBuffer(device, size_vertex, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
   vertexBufferMemory = AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer);
+  indexBuffer = createBuffer(device, size_index, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
+  indexBufferMemory = AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer);
 }
 
 VertexBuffer::~VertexBuffer() {
   vkDestroyBuffer(_logicalDevice, vertexBuffer, nullptr);
   vkFreeMemory(_logicalDevice, vertexBufferMemory, nullptr);
+  vkDestroyBuffer(_logicalDevice, indexBuffer, nullptr);
+  vkFreeMemory(_logicalDevice, indexBufferMemory, nullptr);
 }
 
-void VertexBuffer::UploadViaMap(void const* inputdata, size_t uploadSize) {
+void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::Buffer& buffer, const vk::Device& device,
+                                 const vk::PhysicalDevice& physicalDevice, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
+  vk::Buffer stagingBuffer = createBuffer(device, uploadSize, vk::BufferUsageFlagBits::eTransferSrc);
+  vk::DeviceMemory stagingBufferMemory = AllocateBufferOnDevice(
+      device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer);
 
-  if (uploadSize != size) {
+  void* data = device.mapMemory(stagingBufferMemory, 0, uploadSize);
+  memcpy(data, inputdata, uploadSize);
+  device.unmapMemory(stagingBufferMemory);
+
+  CopyBufferGeneric(stagingBuffer, buffer, uploadSize, cmdpool, device, graphicsQueue);
+
+  device.destroyBuffer(stagingBuffer);
+  device.freeMemory(stagingBufferMemory);
+}
+
+void VertexBuffer::UploadVertex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
+  if (uploadSize != size_vertex) {
     throw std::runtime_error("Yo you got the size wrong bro!");
   }
-
-  void* data = _logicalDevice.mapMemory(stagingBufferMemory, 0, size);
-  memcpy(data, inputdata, uploadSize);
-  _logicalDevice.unmapMemory(stagingBufferMemory);
+  UploadGeneric(inputdata, size_vertex, vertexBuffer, _logicalDevice, _physicalDevice, cmdpool, graphicsQueue);
 }
 
-void VertexBuffer::CopyBuffer(const vk::CommandPool& cmdpool, const vk::Device& device, vk::Queue& graphicsQueue) {
-  CopyBufferGeneric(stagingBuffer, vertexBuffer, size, cmdpool, device, graphicsQueue);
+void VertexBuffer::UploadIndex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
+  if (uploadSize != size_index) {
+    throw std::runtime_error("Yo you got the size wrong bro!");
+  }
+  UploadGeneric(inputdata, size_index, indexBuffer, _logicalDevice, _physicalDevice, cmdpool, graphicsQueue);
 }
 
 void VertexBuffer::CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& dstBuffer, const vk::DeviceSize size, const vk::CommandPool& cmdpool,

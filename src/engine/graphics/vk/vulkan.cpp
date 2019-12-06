@@ -21,8 +21,13 @@ std::unique_ptr<SyncObjects> syncObjects;
 //
 std::unique_ptr<VertexBuffer> vbuffer;
 
-const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 const auto vertices_size = sizeof(vertices[0]) * vertices.size();
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+const auto indices_size = sizeof(indices[0]) * indices.size();
 
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
@@ -49,13 +54,12 @@ void VulkanBackend::startup() {
   cmdBuffers = std::make_unique<CmdBuffers>(ctx->device, cmdPool->commandPool, swapchain->swapChainFramebuffers.size());
 
   // data
-  vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size);
-  vbuffer->UploadViaMap(vertices.data(), vertices_size);
-  vbuffer->CopyBuffer(cmdPool->commandPool, ctx->device, ctx->graphicsQueue);
+  vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
+  vbuffer->UploadVertex(vertices.data(), vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  vbuffer->UploadIndex(indices.data(), indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 
   // render commands
-  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, pipeline->graphicsPipeline, vbuffer->vertexBuffer,
-                     vertices.size());
+  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, pipeline->graphicsPipeline, *vbuffer, indices.size());
   std::cout << "VK init Done" << std::endl;
 }
 
