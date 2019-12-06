@@ -20,6 +20,11 @@ std::unique_ptr<CmdBuffers> cmdBuffers;
 std::unique_ptr<SyncObjects> syncObjects;
 //
 std::unique_ptr<VertexBuffer> vbuffer;
+std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
+std::unique_ptr<DescriptorPool> descriptorPool;
+std::unique_ptr<DescriptorSets> descriptorSets;
+//
+std::unique_ptr<Uniform> uniform;
 
 const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
                                       {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
@@ -39,14 +44,20 @@ void RebuildSwapChain() {
   renderPass = createRenderPass(ctx->device, swapchain->swapChainImageFormat);
   swapchain->InitFramebuffers(*renderPass);
 
-  pipeline = std::make_unique<Pipeline>(ctx->device, swapchain->swapChainExtent, *renderPass, Vertex::getPipelineInputState());
+  pipeline = std::make_unique<Pipeline>(ctx->device, swapchain->swapChainExtent, *renderPass, Vertex::getPipelineInputState(),
+                                        descriptorSetLayout->descriptorSetLayout);
 
+  uniform = std::make_unique<Uniform>(swapchain->swapChainFramebuffers.size(), ctx->device, ctx->physicalDevice);
+  descriptorPool = std::make_unique<DescriptorPool>(ctx->device, swapchain->swapChainImages);
+  descriptorSets = std::make_unique<DescriptorSets>(ctx->device, swapchain->swapChainImages, descriptorSetLayout->descriptorSetLayout,
+                                                    descriptorPool->descriptorPool, uniform->uniformBuffers);
   std::cout << "swapchain Built" << std::endl;
 }
 
 void VulkanBackend::startup() {
   ctx = std::make_unique<ContextInfo>();
   cmdPool = std::make_unique<CmdPool>(ctx->deviceKHR, ctx->device);
+  descriptorSetLayout = std::make_unique<DescriptorSetLayout>(ctx->device);
   RebuildSwapChain();
 
   // Unless the amount of swapchain images changes, don't need to rebuild this when swapchain does.
@@ -59,7 +70,7 @@ void VulkanBackend::startup() {
   vbuffer->UploadIndex(indices.data(), indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 
   // render commands
-  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, pipeline->graphicsPipeline, *vbuffer, indices.size());
+  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, indices.size(), *descriptorSets);
   std::cout << "VK init Done" << std::endl;
 }
 
@@ -70,11 +81,12 @@ void VulkanBackend::shutdown() {
   pipeline.reset();
   renderPass.reset();
   swapchain.reset();
+  descriptorSetLayout.reset();
   cmdPool.reset();
   ctx.reset();
 }
 
-void VulkanBackend::drawFrame() {
+void VulkanBackend::drawFrame(double dt) {
   uint32_t a = WaitForAvilibleImage(ctx->device, swapchain->swapChain, *syncObjects);
   if (a == -1) {
     RebuildSwapChain();
@@ -84,6 +96,7 @@ void VulkanBackend::drawFrame() {
     }
   }
 
+  uniform->updateUniformBuffer(a, dt, swapchain->swapChainExtent);
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);
 }
 

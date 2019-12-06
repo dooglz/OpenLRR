@@ -57,7 +57,7 @@ struct Pipeline {
   vk::PipelineLayout pipelineLayout;
   vk::Pipeline graphicsPipeline;
   Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
-           const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo);
+           const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout);
   ~Pipeline();
 
 private:
@@ -77,11 +77,6 @@ struct SyncObjects {
 private:
   const vk::Device& _logicalDevice;
 };
-
-// GLFW bridge, TODO make interface headder
-VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
-// TODO, wrap in class
-vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
 
 template <class T> struct VertexDataFormat {
   static vk::PipelineVertexInputStateCreateInfo getPipelineInputState() {
@@ -142,12 +137,65 @@ void RebuildSwapChain();
 // returns -1 if swapchain needs to be rebuilt.
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync);
 
+// GLFW bridge, TODO make interface headder
+VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
+// TODO, wrap in class
+vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
+
+struct UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
+  glm::mat4 mvp;
+};
+
+struct Uniform {
+  std::vector<vk::Buffer> uniformBuffers;
+  std::vector<vk::DeviceMemory> uniformBuffersMemory;
+  Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
+  ~Uniform();
+  void updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D& swapChainExtent);
+
+private:
+  const vk::Device& _logicalDevice;
+  const size_t _qty;
+};
+
+struct DescriptorSetLayout {
+  vk::DescriptorSetLayout descriptorSetLayout;
+  DescriptorSetLayout(const vk::Device& device);
+  ~DescriptorSetLayout();
+
+private:
+  const vk::Device& _logicalDevice;
+};
+
+struct DescriptorPool {
+  vk::DescriptorPool descriptorPool;
+  DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages);
+  ~DescriptorPool();
+
+private:
+  const vk::Device& _logicalDevice;
+};
+
+struct DescriptorSets {
+  std::vector<vk::DescriptorSet> descriptorSets;
+  DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages, const vk::DescriptorSetLayout& descriptorSetLayout,
+                 const vk::DescriptorPool& descriptorPool, const std::vector<vk::Buffer>& uniformBuffers);
+  ~DescriptorSets();
+
+private:
+  const vk::Device& _logicalDevice;
+};
+
 struct CmdBuffers {
   std::vector<vk::CommandBuffer> commandBuffers;
   CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
   void Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent, const std::vector<vk::Framebuffer>& swapChainFramebuffers,
-              const vk::Pipeline& graphicsPipeline, const VertexBuffer& vbuf, uint32_t vcount);
+              const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount, const DescriptorSets& descriptorSets);
 
 private:
-  void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBufferr);
+  void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,
+                      const vk::DescriptorSet& descriptorSet);
 };

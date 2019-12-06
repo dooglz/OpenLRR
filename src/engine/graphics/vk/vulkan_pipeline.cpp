@@ -42,7 +42,7 @@ static std::vector<char> readFile(const std::string& filename) {
 }
 
 Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
-                   const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo)
+                   const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout)
     : _logicalDevice{device} {
   auto vertShaderCode = readFile("res/shaders/basic.vert.spv");
   auto fragShaderCode = readFile("res/shaders/basic.frag.spv");
@@ -94,7 +94,8 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   rasterizer.rasterizerDiscardEnable = VK_FALSE;
   rasterizer.polygonMode = vk::PolygonMode::eFill;
   rasterizer.lineWidth = 1.0f;
-  rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+  // rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+  rasterizer.cullMode = vk::CullModeFlagBits::eNone;
   rasterizer.frontFace = vk::FrontFace::eClockwise;
   rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -124,31 +125,12 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   colorBlending.blendConstants[3] = 0.0f;
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-  pipelineLayoutInfo.setLayoutCount = 0;
-  pipelineLayoutInfo.pushConstantRangeCount = 0;
+  pipelineLayoutInfo.setLayoutCount = 1;
+  pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
   pipelineLayout = device.createPipelineLayout(pipelineLayoutInfo, nullptr);
 
   vk::GraphicsPipelineCreateInfo pipelineInfo;
-
-  /*vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo
-          (
-                  vk::PipelineCreateFlags(),                  // flags
-                  2,                                          // stageCount
-                  pipelineShaderStageCreateInfos,             // pStages
-                  &pipelineVertexInputStateCreateInfo,        // pVertexInputState
-                  &pipelineInputAssemblyStateCreateInfo,      // pInputAssemblyState
-                  nullptr,                                    // pTessellationState
-                  &pipelineViewportStateCreateInfo,           // pViewportState
-                  &pipelineRasterizationStateCreateInfo,      // pRasterizationState
-                  &pipelineMultisampleStateCreateInfo,        // pMultisampleState
-                  &pipelineDepthStencilStateCreateInfo,       // pDepthStencilState
-                  &pipelineColorBlendStateCreateInfo,         // pColorBlendState
-                  &pipelineDynamicStateCreateInfo,            // pDynamicState
-                  pipelineLayout.get(),                       // layout
-                  renderPass.get()                            // renderPass
-          );*/
-
   pipelineInfo.flags = vk::PipelineCreateFlags();
   pipelineInfo.stageCount = 2;
   pipelineInfo.pStages = shaderStages;

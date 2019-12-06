@@ -5,8 +5,10 @@
 #include "vulkan.h"
 #include "vulkan_internals.h"
 #include <fstream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 // size = sizeof(vertices[0]) * vertices.size();
 
@@ -116,3 +118,113 @@ void VertexBuffer::CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& ds
   graphicsQueue.waitIdle();
   device.freeCommandBuffers(cmdpool, commandBuffer);
 }
+
+void createDescriptorSetLayout() {
+  VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+  uboLayoutBinding.binding = 0;
+  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboLayoutBinding.descriptorCount = 1;
+
+  // vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+}
+
+Uniform::Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice) : _qty{qty}, _logicalDevice(device) {
+  vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+
+  uniformBuffers.resize(_qty);
+  uniformBuffersMemory.resize(_qty);
+
+  for (size_t i = 0; i < _qty; i++) {
+    uniformBuffers[i] = createBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
+    uniformBuffersMemory[i] = AllocateBufferOnDevice(
+        device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
+  }
+}
+Uniform::~Uniform() {
+  for (size_t i = 0; i < _qty; i++) {
+    _logicalDevice.destroyBuffer(uniformBuffers[i]);
+    _logicalDevice.freeMemory(uniformBuffersMemory[i]);
+  }
+}
+
+void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D& swapChainExtent) {
+  // do double for multiplicaiton beacuse CPUs like numbers.
+
+  static double lifetime = 0;
+  lifetime += dt;
+  glm::dmat4 model = glm::rotate(glm::dmat4(1.0), (lifetime)*glm::radians(90.0), glm::dvec3(0.0, 0.0, 1.0));
+  glm::dmat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 10.0);
+  proj[1][1] *= -1;
+  glm::dmat4 mvp = proj * view * model;
+  // downgrade to float beacuse gpus don't like numbers
+  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp};
+
+  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(ubo));
+  memcpy(data, &ubo, sizeof(ubo));
+  _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
+}
+
+DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDevice(device) {
+  vk::DescriptorSetLayoutBinding uboLayoutBinding;
+  uboLayoutBinding.binding = 0;
+  uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  uboLayoutBinding.descriptorCount = 1;
+  uboLayoutBinding.pImmutableSamplers = nullptr;
+  uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+  vk::DescriptorSetLayoutCreateInfo layoutInfo;
+  layoutInfo.bindingCount = 1;
+  layoutInfo.pBindings = &uboLayoutBinding;
+
+  descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+}
+
+DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
+
+DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages) : _logicalDevice{device} {
+  vk::DescriptorPoolSize poolSize;
+  poolSize.type = vk::DescriptorType::eUniformBuffer;
+  poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+
+  vk::DescriptorPoolCreateInfo poolInfo;
+  poolInfo.poolSizeCount = 1;
+  poolInfo.pPoolSizes = &poolSize;
+  poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+  descriptorPool = device.createDescriptorPool(poolInfo);
+}
+
+DescriptorPool::~DescriptorPool() { _logicalDevice.destroyDescriptorPool(descriptorPool); }
+
+DescriptorSets::DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
+                               const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
+                               const std::vector<vk::Buffer>& uniformBuffers)
+    : _logicalDevice(device) {
+
+  std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+  vk::DescriptorSetAllocateInfo allocInfo;
+  allocInfo.descriptorPool = descriptorPool;
+  allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+  allocInfo.pSetLayouts = layouts.data();
+
+  descriptorSets = device.allocateDescriptorSets(allocInfo);
+
+  for (size_t i = 0; i < swapChainImages.size(); i++) {
+    vk::DescriptorBufferInfo bufferInfo;
+    bufferInfo.buffer = uniformBuffers[i];
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
+
+    vk::WriteDescriptorSet descriptorWrite;
+    descriptorWrite.dstSet = descriptorSets[i];
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    device.updateDescriptorSets(descriptorWrite, nullptr);
+  }
+}
+
+DescriptorSets::~DescriptorSets() {}

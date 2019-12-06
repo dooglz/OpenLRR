@@ -8,19 +8,25 @@
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
-void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer) {
+void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer,
+                                const vk::PipelineLayout& pipelineLayout, const vk::DescriptorSet& descriptorSet) {
 
   cmdBuffer.bindVertexBuffers(0, vbuf.vertexBuffer, {0});
   cmdBuffer.bindIndexBuffer(vbuf.indexBuffer, 0, vk::IndexType::eUint16);
 
+  cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout,
+                               0, // first set
+                               descriptorSet,
+                               nullptr // dynamicOffsets
+  );
   vkCmdDrawIndexed(cmdBuffer, count, 1, 0, 0, 0);
 
   // vkCmdDraw(cmdBuffer, count, 1, 0, 0);
 }
 
 void CmdBuffers::Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
-                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const vk::Pipeline& graphicsPipeline, const VertexBuffer& vbuf,
-                        uint32_t vcount) {
+                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
+                        uint32_t vcount, const DescriptorSets& descriptorSets) {
   for (size_t i = 0; i < commandBuffers.size(); i++) {
 
     vk::CommandBufferBeginInfo beginInfo;
@@ -36,9 +42,9 @@ void CmdBuffers::Record(const vk::RenderPass& renderPass, const vk::Extent2D& sw
     renderPassInfo.pClearValues = &clearColor;
     commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-    commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+    commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
 
-    RecordCommands(vbuf, vcount, commandBuffers[i]);
+    RecordCommands(vbuf, vcount, commandBuffers[i], pipeline.pipelineLayout, descriptorSets.descriptorSets[i]);
 
     commandBuffers[i].endRenderPass();
     commandBuffers[i].end();

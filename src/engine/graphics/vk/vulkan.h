@@ -11,7 +11,7 @@ class VulkanBackend : public GraphicsBackend {
 public:
   void startup() override;
   void shutdown() override;
-  void drawFrame() override;
+  void drawFrame(double dt = 0) override;
   void resize() override;
 };
 
