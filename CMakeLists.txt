@@ -41,8 +41,11 @@ endif()
 
 add_subdirectory(deps/glfw EXCLUDE_FROM_ALL)
 add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
+add_library(fastNoise deps/fastnoise/fastnoise.cpp deps/fastnoise/fastnoise.h)
+target_include_directories(fastNoise SYSTEM PUBLIC deps/fastnoise)
+target_compile_features(fastNoise PUBLIC cxx_std_17)
 
-target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm)
+target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 

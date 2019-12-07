@@ -80,8 +80,14 @@ private:
 
 template <class T> struct VertexDataFormat {
   static vk::PipelineVertexInputStateCreateInfo getPipelineInputState() {
-    static vk::PipelineVertexInputStateCreateInfo a(vk::PipelineVertexInputStateCreateFlags(), 1, T::getBindingDescription(),
-                                                    T::getAttributeDescriptions()->size(), T::getAttributeDescriptions()->data());
+
+    static vk::PipelineVertexInputStateCreateInfo a(
+            vk::PipelineVertexInputStateCreateFlags(),//PipelineVertexInputStateCreateFlags
+            1, // vertexBindingDescriptionCount
+            T::getBindingDescription(), //VertexInputBindingDescription
+            T::getAttributeDescriptions()->size(), //vertexAttributeDescriptionCount
+            T::getAttributeDescriptions()->data() //VertexInputAttributeDescription
+             );
     int ff = 4;
     return a;
   }
@@ -97,9 +103,9 @@ struct Vertex : public VertexDataFormat<Vertex> {
     return &b;
   };
   static const std::array<vk::VertexInputAttributeDescription, 2>* getAttributeDescriptions() {
-    const static std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = {
+    const static std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = { //eR32G32B32A32Sfloat
         vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
-        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, color))};
+        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color))};
     return &attributeDescriptions;
   };
 };

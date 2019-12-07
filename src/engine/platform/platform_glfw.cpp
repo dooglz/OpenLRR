@@ -17,7 +17,7 @@ void platform::init(int w, int h) {
 
   window = glfwCreateWindow(w, h, "Vulkan", nullptr, nullptr);
   // nice positon 3915 -121
-  glfwSetWindowPos(window, 3915, -121);
+  //glfwSetWindowPos(window, 3915, -121);
   // glfwSetWindowPosCallback(window, [](GLFWwindow* wn, int xpos, int ypos) { std::cout << "WindowMoved," << xpos << " \t" << ypos << std::endl; });
   glfwSetWindowSizeCallback(window, [](GLFWwindow* wn, int w, int h) { std::cout << "WindowResized," << w << " \t" << h << std::endl; });
 }

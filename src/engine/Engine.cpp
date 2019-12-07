@@ -10,6 +10,7 @@
 #include <exception>
 #include <functional>
 #include <iostream>
+#include "../game/game.h"
 
 VulkanBackend vk;
 
@@ -53,6 +54,7 @@ void Engine::CreateWindow(int w, int h) { platform::init(w, h); }
 void Engine::Go() {
   bool go = true;
   vk.startup();
+  Game::StartUp();
   auto lastframe = std::chrono::high_resolution_clock::now();
   try {
     movingAverage frametimes(10000, [](double v, double min, double max) {
@@ -64,6 +66,7 @@ void Engine::Go() {
       lastframe = now;
       go &= !platform::shouldQuit();
       platform::tick();
+      Game::Tick(dt);
       vk.drawFrame(dt);
       frametimes.add(dt);
     }
