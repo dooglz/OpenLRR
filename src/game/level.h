@@ -4,6 +4,7 @@
 
 #include <array>
 #include <optional>
+#include <cmath>
 #pragma once
 
 namespace Game {
