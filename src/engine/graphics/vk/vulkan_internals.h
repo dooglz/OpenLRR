@@ -8,6 +8,7 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
+const bool ENABLE_VSYNC = false;
 // things that exist for whole applicaiton
 struct ContextInfo {
   ContextInfo();
@@ -94,18 +95,18 @@ template <class T> struct VertexDataFormat {
 };
 
 struct Vertex : public VertexDataFormat<Vertex> {
-  glm::vec2 pos;
-  glm::vec3 color;
-  Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
+  glm::vec3 pos;
+  //glm::vec3 color;
+  //Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
+  Vertex(glm::vec3 p, glm::vec3 c) : pos{p} {};
 
   static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
   };
-  static const std::array<vk::VertexInputAttributeDescription, 2>* getAttributeDescriptions() {
-    const static std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = { //eR32G32B32A32Sfloat
-        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
-        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color))};
+  static const std::array<vk::VertexInputAttributeDescription, 1>* getAttributeDescriptions() {
+    const static std::array<vk::VertexInputAttributeDescription, 1> attributeDescriptions = { //eR32G32B32A32Sfloat
+        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos))};
     return &attributeDescriptions;
   };
 };

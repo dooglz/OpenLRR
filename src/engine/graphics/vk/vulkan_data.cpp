@@ -4,15 +4,19 @@
 
 #include "vulkan.h"
 #include "vulkan_internals.h"
+#include "../../Engine.h"
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include "../../../utils.h"
 
 // size = sizeof(vertices[0]) * vertices.size();
 
-uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties, const vk::PhysicalDevice& pdevice) {
+uint32_t
+findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags &properties, const vk::PhysicalDevice &pdevice) {
   vk::PhysicalDeviceMemoryProperties memProperties;
   pdevice.getMemoryProperties(&memProperties);
   for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
@@ -23,7 +27,7 @@ uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& prop
   throw std::runtime_error("failed to find suitable memory type!");
 }
 
-vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk::BufferUsageFlags usage) {
+vk::Buffer createBuffer(const vk::Device &device, const vk::DeviceSize size, vk::BufferUsageFlags usage) {
 
   vk::BufferCreateInfo bufferInfo;
   bufferInfo.size = size;
@@ -32,8 +36,9 @@ vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk:
   return device.createBuffer(bufferInfo, nullptr);
 }
 
-vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::MemoryPropertyFlags& properties,
-                                        const vk::Buffer& buffer) {
+vk::DeviceMemory AllocateBufferOnDevice(const vk::Device &device, const vk::PhysicalDevice &pdevice,
+                                        const vk::MemoryPropertyFlags &properties,
+                                        const vk::Buffer &buffer) {
   vk::MemoryRequirements memRequirements;
   device.getBufferMemoryRequirements(buffer, &memRequirements);
   vk::MemoryAllocateInfo allocInfo;
@@ -44,12 +49,15 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
   return devmem;
 }
 
-VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size_vertex,
+VertexBuffer::VertexBuffer(const vk::Device &device, const vk::PhysicalDevice &pdevice,
+                           const vk::DeviceSize size_vertex,
                            const vk::DeviceSize size_index)
-    : _logicalDevice{device}, _physicalDevice{pdevice}, size_vertex{size_vertex}, size_index{size_index} {
-  vertexBuffer = createBuffer(device, size_vertex, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
+        : _logicalDevice{device}, _physicalDevice{pdevice}, size_vertex{size_vertex}, size_index{size_index} {
+  vertexBuffer = createBuffer(device, size_vertex,
+                              vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
   vertexBufferMemory = AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer);
-  indexBuffer = createBuffer(device, size_index, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
+  indexBuffer = createBuffer(device, size_index,
+                             vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
   indexBufferMemory = AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer);
 }
 
@@ -60,13 +68,15 @@ VertexBuffer::~VertexBuffer() {
   vkFreeMemory(_logicalDevice, indexBufferMemory, nullptr);
 }
 
-void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::Buffer& buffer, const vk::Device& device,
-                                 const vk::PhysicalDevice& physicalDevice, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
+void VertexBuffer::UploadGeneric(void const *inputdata, size_t uploadSize, vk::Buffer &buffer, const vk::Device &device,
+                                 const vk::PhysicalDevice &physicalDevice, const vk::CommandPool &cmdpool,
+                                 vk::Queue &graphicsQueue) {
   vk::Buffer stagingBuffer = createBuffer(device, uploadSize, vk::BufferUsageFlagBits::eTransferSrc);
   vk::DeviceMemory stagingBufferMemory = AllocateBufferOnDevice(
-      device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer);
+          device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+          stagingBuffer);
 
-  void* data = device.mapMemory(stagingBufferMemory, 0, uploadSize);
+  void *data = device.mapMemory(stagingBufferMemory, 0, uploadSize);
   memcpy(data, inputdata, uploadSize);
   device.unmapMemory(stagingBufferMemory);
 
@@ -76,22 +86,25 @@ void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::B
   device.freeMemory(stagingBufferMemory);
 }
 
-void VertexBuffer::UploadVertex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
+void VertexBuffer::UploadVertex(void const *inputdata, size_t uploadSize, const vk::CommandPool &cmdpool,
+                                vk::Queue &graphicsQueue) {
   if (uploadSize != size_vertex) {
     throw std::runtime_error("Yo you got the size wrong bro!");
   }
   UploadGeneric(inputdata, size_vertex, vertexBuffer, _logicalDevice, _physicalDevice, cmdpool, graphicsQueue);
 }
 
-void VertexBuffer::UploadIndex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
+void VertexBuffer::UploadIndex(void const *inputdata, size_t uploadSize, const vk::CommandPool &cmdpool,
+                               vk::Queue &graphicsQueue) {
   if (uploadSize != size_index) {
     throw std::runtime_error("Yo you got the size wrong bro!");
   }
   UploadGeneric(inputdata, size_index, indexBuffer, _logicalDevice, _physicalDevice, cmdpool, graphicsQueue);
 }
 
-void VertexBuffer::CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& dstBuffer, const vk::DeviceSize size, const vk::CommandPool& cmdpool,
-                                     const vk::Device& device, vk::Queue& graphicsQueue) {
+void VertexBuffer::CopyBufferGeneric(const vk::Buffer &srcBuffer, vk::Buffer &dstBuffer, const vk::DeviceSize size,
+                                     const vk::CommandPool &cmdpool,
+                                     const vk::Device &device, vk::Queue &graphicsQueue) {
   vk::CommandBufferAllocateInfo allocInfo;
   allocInfo.level = vk::CommandBufferLevel::ePrimary;
   allocInfo.commandPool = cmdpool;
@@ -128,7 +141,9 @@ void createDescriptorSetLayout() {
   // vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 }
 
-Uniform::Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice) : _qty{qty}, _logicalDevice(device) {
+Uniform::Uniform(size_t qty, const vk::Device &device, const vk::PhysicalDevice &physicalDevice) : _qty{qty},
+                                                                                                   _logicalDevice(
+                                                                                                           device) {
   vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
 
   uniformBuffers.resize(_qty);
@@ -137,9 +152,11 @@ Uniform::Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice&
   for (size_t i = 0; i < _qty; i++) {
     uniformBuffers[i] = createBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
     uniformBuffersMemory[i] = AllocateBufferOnDevice(
-        device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
+            device, physicalDevice,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
   }
 }
+
 Uniform::~Uniform() {
   for (size_t i = 0; i < _qty; i++) {
     _logicalDevice.destroyBuffer(uniformBuffers[i]);
@@ -147,25 +164,34 @@ Uniform::~Uniform() {
   }
 }
 
-void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D& swapChainExtent) {
+
+void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D &swapChainExtent) {
   // do double for multiplicaiton beacuse CPUs like numbers.
 
   static double lifetime = 0;
   lifetime += dt;
-  glm::dmat4 model = glm::rotate(glm::dmat4(1.0), (lifetime)*glm::radians(90.0), glm::dvec3(0.0, 0.0, 1.0));
-  glm::dmat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-  glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 10.0);
+  glm::dmat4 model = glm::dmat4(1.0);
+
+  glm::dquat cq = Engine::getCamRot();
+  glm::dvec3 pos = Engine::getCamPos();
+  glm::dvec3 up = normalize(GetUpVector(cq));
+  glm::dvec3 forwards = normalize(GetForwardVector(cq));
+
+  glm::dmat4 view = glm::lookAt(pos, pos + forwards, up);
+
+  glm::dmat4 proj = glm::perspective(glm::radians(45.0),
+                                     (double) swapChainExtent.width / (double) swapChainExtent.height, 0.1, 1000.0);
   proj[1][1] *= -1;
   glm::dmat4 mvp = proj * view * model;
   // downgrade to float beacuse gpus don't like numbers
-  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp};
+  const UniformBufferObject ubo = {(glm::fmat4) model, (glm::fmat4) view, (glm::fmat4) proj, (glm::fmat4) mvp};
 
-  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(ubo));
+  void *data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(ubo));
   memcpy(data, &ubo, sizeof(ubo));
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
-DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDevice(device) {
+DescriptorSetLayout::DescriptorSetLayout(const vk::Device &device) : _logicalDevice(device) {
   vk::DescriptorSetLayoutBinding uboLayoutBinding;
   uboLayoutBinding.binding = 0;
   uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
@@ -182,7 +208,8 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDev
 
 DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
 
-DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages) : _logicalDevice{device} {
+DescriptorPool::DescriptorPool(const vk::Device &device, const std::vector<vk::Image> &swapChainImages)
+        : _logicalDevice{device} {
   vk::DescriptorPoolSize poolSize;
   poolSize.type = vk::DescriptorType::eUniformBuffer;
   poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
@@ -196,10 +223,11 @@ DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::I
 
 DescriptorPool::~DescriptorPool() { _logicalDevice.destroyDescriptorPool(descriptorPool); }
 
-DescriptorSets::DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
-                               const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
-                               const std::vector<vk::Buffer>& uniformBuffers)
-    : _logicalDevice(device) {
+DescriptorSets::DescriptorSets(const vk::Device &device, const std::vector<vk::Image> &swapChainImages,
+                               const vk::DescriptorSetLayout &descriptorSetLayout,
+                               const vk::DescriptorPool &descriptorPool,
+                               const std::vector<vk::Buffer> &uniformBuffers)
+        : _logicalDevice(device) {
 
   std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
   vk::DescriptorSetAllocateInfo allocInfo;

@@ -5,7 +5,7 @@
 #include "vulkan.h"
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
-
+#include "../../../game/game.h"
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
@@ -26,6 +26,7 @@ std::unique_ptr<DescriptorSets> descriptorSets;
 //
 std::unique_ptr<Uniform> uniform;
 
+    /*
 const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
                                       {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
                                       {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
@@ -33,7 +34,7 @@ const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 const auto vertices_size = sizeof(vertices[0]) * vertices.size();
 const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 const auto indices_size = sizeof(indices[0]) * indices.size();
-
+*/
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
   pipeline.reset();
@@ -65,12 +66,19 @@ void VulkanBackend::startup() {
   cmdBuffers = std::make_unique<CmdBuffers>(ctx->device, cmdPool->commandPool, swapchain->swapChainFramebuffers.size());
 
   // data
-  vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
-  vbuffer->UploadVertex(vertices.data(), vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
-  vbuffer->UploadIndex(indices.data(), indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 
+  size_t vc, ic;
+  glm::vec3* vd = Game::getVertices(vc);
+  glm::uint16_t* id = Game::getIndices(ic);
+  const auto vertices_size = sizeof(vd[0]) * vc;
+  const auto indices_size = sizeof(id[0]) * ic;
+
+  vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
+  vbuffer->UploadVertex(vd, vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  
   // render commands
-  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, indices.size(), *descriptorSets);
+  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ic, *descriptorSets);
   std::cout << "VK init Done" << std::endl;
 }
 

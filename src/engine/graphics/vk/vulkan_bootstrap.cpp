@@ -385,6 +385,7 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
   }
 
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
+  if(!ENABLE_VSYNC)
   {
     for (const auto& availablePresentMode : swapChainSupport.presentModes) {
       if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
