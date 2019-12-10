@@ -11,7 +11,7 @@
 
 namespace Game {
 const size_t squareSize = 4;
-const size_t levelSize = 4;
+const size_t levelSize = 5;
 const size_t nTiles = levelSize * levelSize;
 const size_t nVerts = nTiles + (2 * levelSize) + 1;
 const size_t nVertsDim = sqrt(nVerts);

@@ -195,6 +195,8 @@ Level::~Level() {}
   }
 
 #define VertAt(a, b) verts[dimAt(a, b, nVertsDim)]
+
+//THIS AINT RIGHT
 #define VertPos(a) dimPos(a, nVertsDim)
 
 
@@ -225,20 +227,34 @@ void Triangulate(const std::array<Tile, levelSize * levelSize> &tiles,
     const Tile &t = tiles[i];
     idx tp = TilePos(i);
     std::array<idx, 4> averts = {getAsosiatedVerts(tp.x, tp.y)};
-    //VertAt(averts[1].x, averts[1].y).z = t.height;
-    // VertAt(averts[2].x, averts[2].y).z = t.height;
+    VertAt(averts[1].x, averts[1].y).z = t.height;
+    VertAt(averts[2].x, averts[2].y).z = t.height;
   }
-  //verts[0].z = tiles[0].height;
-  // verts[verts.size() - 1].z = tiles[tiles.size() - 1].height;
+  verts[0].z = tiles[0].height;
+  verts[verts.size() - 1].z = tiles[tiles.size() - 1].height;
 
+  for(auto& v : verts){
+    //v.z = v.z * 0.1;
+    v.z =0;
+  }
+
+  //sqaures share verts, so total verts may nto be a sqaure number
+  //So we got to do it this ass backwards way, not the way you think.
   // set XY
+  for (int k = 0; k < verts.size(); ++k) {
+    glm::vec3& v = verts[k];
+    idx vp = VertPos(k);
+    v.x = vp.x;
+    v.y = vp.y;
+  }
+/*
   for (int i = 0; i < nVertsDim; ++i) {
     for (int j = 0; j < nVertsDim; ++j) {
       glm::vec3 &vert = VertAt(i, j);
       vert.x = i;
       vert.y = j;
     }
-  }
+  }*/
 
   // GenerateIndices
   if (indiceCount >= std::numeric_limits<uint16_t>::max()) {
@@ -251,13 +267,13 @@ void Triangulate(const std::array<Tile, levelSize * levelSize> &tiles,
   size_t ptr = 0;
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      inidces[ptr + 0] = j + (i * levelSize + 1);
-      inidces[ptr + 1] = j + (i * levelSize + 1) + 1;
-      inidces[ptr + 2] = j + (i * levelSize + 1) + 5;
+      inidces[ptr + 0] = j + (i * (levelSize + 1));
+      inidces[ptr + 1] = j + (i * (levelSize + 1)) + 1;
+      inidces[ptr + 2] = j + (i * (levelSize + 1)) + 5;
       //
-      inidces[ptr + 3] = j + (i * levelSize + 1) + 1;
-      inidces[ptr + 4] = j + (i * levelSize + 1) + 6;
-      inidces[ptr + 5] = j + (i * levelSize + 1) + 5;
+      inidces[ptr + 3] = j + (i * (levelSize + 1)) + 1;
+      inidces[ptr + 4] = j + (i * (levelSize + 1)) + 6;
+      inidces[ptr + 5] = j + (i * (levelSize + 1)) + 5;
       ptr += 6;
     }
   }
