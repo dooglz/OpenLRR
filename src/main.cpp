@@ -6,7 +6,6 @@
 int main(int argc, const char* argv[]) {
   std::cout << "Hello world " << std::endl;
   Game::StartUp();
-  return 0;
   Engine::Startup();
   Engine::CreateWindow(1280, 720);
   Engine::Go();

@@ -152,8 +152,10 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
 
   static double lifetime = 0;
   lifetime += dt;
-  glm::dmat4 model = glm::rotate(glm::dmat4(1.0), (lifetime)*glm::radians(90.0), glm::dvec3(0.0, 0.0, 1.0));
+  //glm::dmat4 model = glm::rotate(glm::dmat4(1.0), (lifetime)*glm::radians(90.0), glm::dvec3(0.0, 0.0, 1.0));
+  glm::dmat4 model = glm::dmat4(1.0); 
   glm::dmat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  view = glm::lookAt(glm::vec3(10.0f, 10.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
   glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 10.0);
   proj[1][1] *= -1;
   glm::dmat4 mvp = proj * view * model;
