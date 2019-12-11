@@ -19,4 +19,4 @@ script:
   # compile and execute 
   - cmake --version
   - mkdir -p build && cd build && cmake ..
-  - cmake --build . --target package --config Release -- -j4
+  - cmake --build . --target OpenLRR --config Release -- -j4
