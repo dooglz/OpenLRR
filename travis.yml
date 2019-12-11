@@ -1,4 +1,4 @@
-language: gneric
+language: cpp
 sudo: required
 os: linux
 dist: bionic
