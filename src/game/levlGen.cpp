@@ -1,6 +1,7 @@
 
 #include "level.h"
 #include <FastNoise.h>
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <glm/glm.hpp>
@@ -8,13 +9,52 @@
 #include <optional>
 #include <set>
 #include <vector>
-#include <algorithm>
 
 using namespace Game;
 
 // perlin noise rarely goes close to 0 or 1, usually between .2 and .7, this value stretches that up.
 #define perlinPush 1.5
 #define noiseToVal(mini, maxi, a) mini + (uint8_t)(round(((double)(maxi - mini)) * ((1.0 + (a * perlinPush)) * 0.5)))
+
+#define dimAt(a, b, s) b + (a * s)
+#define dimPos(a, s)                                                                                                                                 \
+  a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
+
+#define TileAt(a, b) tiles[dimAt(a, b, levelSize)];
+#define TilePos(a) dimPos(a, levelSize);
+
+#define getAsosiatedVerts(a, b)                                                                                                                      \
+  {                                                                                                                                                  \
+    {a, b}, {a, b + 1}, {a + 1, b}, { a + 1, b + 1 }                                                                                                 \
+  }
+auto adjacentTiles = [](idx t) {
+  std::vector<idx> adj;
+  if (t.x > 0) {
+    adj.push_back({t.x - 1, t.y});
+  }
+  if (t.y > 0) {
+    adj.push_back({t.x, t.y - 1});
+  }
+  if (t.x < levelSize - 1) {
+    adj.push_back({t.x + 1, t.y});
+  }
+  if (t.y < levelSize - 1) {
+    adj.push_back({t.x, t.y + 1});
+  }
+  return adj;
+};
+
+#define VertAt(a, b) verts[dimAt(a, b, (levelSize + 1))]
+
+void PrintMap(std::array<Tile, levelSize * levelSize> tiles) {
+  std::cout << std::endl;
+  for (int i = 0; i < levelSize; ++i) {
+    for (int j = 0; j < levelSize; ++j) {
+      std::cout << tiles[j + (i * levelSize)].tostr() << ".";
+    }
+    std::cout << std::endl;
+  }
+}
 
 void Triangulate(const std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts,
                  std::array<uint16_t, indiceCount>& inidces);
@@ -37,7 +77,51 @@ bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   return false;
 }
 
+void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles) {
+  size_t squashcount = 0;
+  bool didsquash = true;
+  while (didsquash) {
+    didsquash = false;
+    std::vector<idx> walls;
+    for (size_t i = 0; i < levelSize; ++i) {
+      for (size_t j = 0; j < levelSize; ++j) {
+        Tile& t = tiles[j + (i * levelSize)];
+        if (t.type == Tile::rock) {
+          walls.push_back({i, j});
+        }
+      }
+    }
+    for (size_t i = 0; i < walls.size(); ++i) {
+      const idx& w = walls[i];
+      size_t adjacent = 0;
+      for (size_t j = 0; j < walls.size(); ++j) {
+
+        if (i == j) {
+          continue;
+        }
+        if (w.surround(walls[j])) {
+          adjacent++;
+        }
+      }
+      if (adjacent < 3) {
+        didsquash = true;
+        squashcount++;
+        Tile& t = tiles[w.y + (w.x * levelSize)];
+        t.type = Tile::empty;
+        t.rockType.reset();
+        // remove me from walls
+        walls.erase(walls.begin() + i);
+        i--;
+      }
+    }
+  }
+  std::cout << "Suqashed Rocks: " << squashcount << std::endl;
+}
+
 bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint) {
+  // TODO squash freestanding walls;
+  PrintMap(tiles);
+  SquashWalls(tiles);
   std::vector<std::vector<idx>> emptyAreas;
   for (size_t i = 0; i < levelSize; ++i) {
     for (size_t j = 0; j < levelSize; ++j) {
@@ -107,16 +191,6 @@ bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint
   return true;
 }
 
-void PrintMap(std::array<Tile, levelSize * levelSize> tiles) {
-  std::cout << std::endl;
-  for (int i = 0; i < levelSize; ++i) {
-    for (int j = 0; j < levelSize; ++j) {
-      std::cout << tiles[j + (i * levelSize)].tostr() << ".";
-    }
-    std::cout << std::endl;
-  }
-}
-
 std::array<Tile, levelSize * levelSize> Generate() {
   std::array<Tile, levelSize * levelSize> tiles;
   FastNoise noise, noise2;
@@ -128,13 +202,15 @@ std::array<Tile, levelSize * levelSize> Generate() {
       Tile& t = tiles[j + (i * levelSize)];
       t.height = noiseToVal(0, 5, noise.GetPerlin(i, j));
       if (i == 0 || j == 0 || i == (levelSize - 1) || j == (levelSize - 1)) {
-        t.type = Tile::solid;
+        t.type = Tile::rock;
+        t.rockType = Tile::solid;
       } else if (t.height == 0) {
         t.type = Tile::water;
       } else {
         uint8_t rval = noiseToVal(0, Tile::RockTypesCount, noise2.GetCellular(i, j));
         if (rval == 0) {
-          t.type = Tile::solid;
+          t.type = Tile::rock;
+          t.rockType = Tile::solid;
         } else if (rval >= Tile::RockTypesCount) {
           t.type = Tile::empty;
         } else {
@@ -147,6 +223,9 @@ std::array<Tile, levelSize * levelSize> Generate() {
           }
         }
       }
+      if (FLATLEVEL && t.height != 0) {
+        t.height = 1;
+      }
     }
   }
   return tiles;
@@ -154,12 +233,12 @@ std::array<Tile, levelSize * levelSize> Generate() {
 
 Level::Level() {
   _tiles = Generate();
-  idx spawnpoint;
+
   bool generated = false;
   const bool shouldV = false;
   if (shouldV) {
     for (size_t i = 0; i < 20; i++) {
-      if (validateMap(_tiles, spawnpoint)) {
+      if (validateMap(_tiles, _spawnpoint)) {
         generated = true;
         break;
       }
@@ -170,7 +249,7 @@ Level::Level() {
       throw std::runtime_error("LevelGen no validate");
     }
   } else {
-    validateMap(_tiles, spawnpoint);
+    validateMap(_tiles, _spawnpoint);
   }
   PrintMap(_tiles);
   Triangulate(_tiles, _verts, _inidces);
@@ -178,20 +257,6 @@ Level::Level() {
 }
 
 Level::~Level() {}
-
-#define dimAt(a, b, s) b + (a * s)
-#define dimPos(a, s)                                                                                                                                 \
-  a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
-
-#define TileAt(a, b) tiles[dimAt(a, b, levelSize)];
-#define TilePos(a) dimPos(a, levelSize);
-
-#define getAsosiatedVerts(a, b)                                                                                                                      \
-  {                                                                                                                                                  \
-    {a, b}, {a, b + 1}, {a + 1, b}, { a + 1, b + 1 }                                                                                                 \
-  }
-
-#define VertAt(a, b) verts[dimAt(a, b, (levelSize + 1))]
 
 std::vector<Game::idx> getAssTiles(size_t a, size_t b, size_t s) {
   s = s - 1;
@@ -217,11 +282,34 @@ void Triangulate(const std::array<Tile, levelSize * levelSize>& tiles, std::arra
 
   // set heights
   for (int i = 0; i < tiles.size(); ++i) {
+
     const Tile& t = tiles[i];
     idx tp = TilePos(i);
     std::array<idx, 4> averts = {getAsosiatedVerts(tp.x, tp.y)};
     VertAt(averts[1].x, averts[1].y).z = t.height;
     VertAt(averts[2].x, averts[2].y).z = t.height;
+    if (t.type == Tile::rock) {
+      // rocky horror
+      // anywhere between 1 and 4 of the tile verts should be at wall height
+      for (const auto& adjtAvert : averts) {
+        VertAt(adjtAvert.x, adjtAvert.y).z = t.height + wallheight;
+      }
+      std::vector<idx> adj = adjacentTiles(tp);
+      for (const auto adjTidx : adj) {
+        const Tile& adjt = TileAt(adjTidx.x, adjTidx.y);
+        if (adjt.type != Tile::rock) {
+          std::array<idx, 4> adjtAverts = {getAsosiatedVerts(adjTidx.x, adjTidx.y)};
+          // any adjtAverts that is also a averts is wallheight
+          for (const auto& adjtAvert : adjtAverts) {
+            for (const auto& avert : averts) {
+              if (adjtAvert == avert) {
+                VertAt(adjtAvert.x, adjtAvert.y).z = t.height;
+              }
+            }
+          }
+        }
+      }
+    }
   }
   verts[0].z = tiles[0].height;
   verts[verts.size() - 1].z = tiles[tiles.size() - 1].height;
@@ -232,8 +320,8 @@ void Triangulate(const std::array<Tile, levelSize * levelSize>& tiles, std::arra
   for (int k = 0; k < verts.size(); ++k) {
     glm::vec3& v = verts[k];
     v.z = v.z * 0.25;
-    v.x = (k % (levelSize + 1));
-    v.y = floor((float)k / (float)(levelSize + 1));
+    v.y = (k % (levelSize + 1));
+    v.x = floor((float)k / (float)(levelSize + 1));
   }
 
   // GenerateIndices
