@@ -49,7 +49,7 @@ target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 
-find_program(GLSLC glslc )
+find_program(GLSLC glslc HINTS $ENV{VULKAN_SDK}/bin)
 message(${GLSLC})
 if(EXISTS "${Vulkan_INCLUDE_DIR}/../Bin32/glslc")
  get_filename_component(GLSLC "${Vulkan_INCLUDE_DIR}/../Bin32/glslc" ABSOLUTE)

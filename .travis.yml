@@ -20,3 +20,6 @@ script:
   - cmake --version
   - mkdir -p build && cd build && cmake ..
   - cmake --build . --target OpenLRR --config Release -- -j4
+cache:
+  directories:
+  - $VK_VERSION
