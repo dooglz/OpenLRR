@@ -3,14 +3,15 @@
 //
 
 #include "platform_glfw.h"
-#include "../graphics/vk/vulkan_internals.h"
+#include "../../utils.h"
 #include "../Engine.h"
+#include "../graphics/vk/vulkan_internals.h"
 #include <GLFW/glfw3.h>
+#include <glm/gtc/quaternion.hpp>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
-#include "../../utils.h"
 
-static GLFWwindow *window;
+static GLFWwindow* window;
 
 void platform::init(int w, int h) {
   glfwInit();
@@ -19,11 +20,9 @@ void platform::init(int w, int h) {
 
   window = glfwCreateWindow(w, h, "Vulkan", nullptr, nullptr);
   // nice positon 3915 -121
-  //glfwSetWindowPos(window, 3915, -121);
+  // glfwSetWindowPos(window, 3915, -121);
   // glfwSetWindowPosCallback(window, [](GLFWwindow* wn, int xpos, int ypos) { std::cout << "WindowMoved," << xpos << " \t" << ypos << std::endl; });
-  glfwSetWindowSizeCallback(window, [](GLFWwindow *wn, int w, int h) {
-    std::cout << "WindowResized," << w << " \t" << h << std::endl;
-  });
+  glfwSetWindowSizeCallback(window, [](GLFWwindow* wn, int w, int h) { std::cout << "WindowResized," << w << " \t" << h << std::endl; });
 }
 
 void platform::shutdown() {
@@ -32,7 +31,7 @@ void platform::shutdown() {
   glfwTerminate();
 }
 
-void processInput(GLFWwindow *window, double dt) {
+void processInput(GLFWwindow* window, double dt) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
 
@@ -90,18 +89,16 @@ void platform::tick(double dt) {
 
 bool platform::shouldQuit() { return glfwWindowShouldClose(window); }
 
-const char **platform::GetRequiredVKInstanceExtensions(unsigned int *count) {
-  return glfwGetRequiredInstanceExtensions(count);
-}
+const char** platform::GetRequiredVKInstanceExtensions(unsigned int* count) { return glfwGetRequiredInstanceExtensions(count); }
 
-void platform::GetFramebufferSize(int *width, int *height) { glfwGetFramebufferSize(window, width, height); }
+void platform::GetFramebufferSize(int* width, int* height) { glfwGetFramebufferSize(window, width, height); }
 
-void platform::setWindowTitle(const std::string &str) {
-  //glfwSetWindowTitle(window,str);
+void platform::setWindowTitle(const std::string& str) {
+  // glfwSetWindowTitle(window,str);
   glfwSetWindowTitle(window, str.c_str());
 }
 
-VkSurfaceKHR CreateVKWindowSurface(const vk::Instance &instance) {
+VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance) {
   VkSurfaceKHR surface;
   if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
     throw std::runtime_error("failed to create window surface!");

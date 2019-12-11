@@ -238,6 +238,7 @@ CmdPool::CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device&
 
   vk::CommandPoolCreateInfo poolInfo = {};
   poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+  poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
   commandPool = device.createCommandPool(poolInfo);
 }
 
@@ -362,7 +363,12 @@ ContextInfo::~ContextInfo() {
   graphicsQueue = nullptr;
   presentQueue = nullptr;
   vkDestroySurfaceKHR(instance, surface, nullptr);
-  // todo destory validation shit
+  if (debugMessenger != nullptr) {
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+      func(instance, debugMessenger, nullptr);
+    }
+  }
   vkDestroyInstance(instance, nullptr);
 }
 
@@ -385,8 +391,7 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
   }
 
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
-  if(!ENABLE_VSYNC)
-  {
+  if (!ENABLE_VSYNC) {
     for (const auto& availablePresentMode : swapChainSupport.presentModes) {
       if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
         presentMode = availablePresentMode;

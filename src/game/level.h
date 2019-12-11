@@ -4,17 +4,17 @@
 #pragma once
 
 #include <array>
-#include <iostream>
-#include <optional>
 #include <cmath>
 #include <glm/glm.hpp>
+#include <iostream>
+#include <optional>
 
 namespace Game {
 const size_t squareSize = 4;
-const size_t levelSize = 5;
+const size_t levelSize = 16;
 const size_t nTiles = levelSize * levelSize;
 const size_t nVerts = nTiles + (2 * levelSize) + 1;
-const size_t nVertsDim = sqrt(nVerts);
+// const size_t nVertsDim = sqrt(nVerts);
 const size_t indiceCount = nTiles * 2 * 3;
 
 struct Tile {
@@ -46,7 +46,7 @@ struct Tile {
 
 struct idx {
   size_t x, y;
-  size_t dist(const idx& a) { return sqrt(((double)a.y - (double)y) + ((double)a.x - (double)x)); }
+  double dist(const idx& a) { return sqrt(((double)a.y - (double)y) + ((double)a.x - (double)x)); }
   // bool adjacent(const idx& a) const { return false; }
   bool surround(const idx& a) const { return (a.x == x - 1 || a.x == x || a.x == x + 1) && (a.y == y - 1 || a.y == y || a.y == y + 1); }
   friend std::ostream& operator<<(std::ostream& os, const idx& dt) {
@@ -75,9 +75,6 @@ public:
   std::array<uint16_t, indiceCount> _inidces;
 
 private:
-
 };
-
-
 
 } // namespace Game

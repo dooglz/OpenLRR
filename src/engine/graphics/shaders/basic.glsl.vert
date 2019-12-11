@@ -13,5 +13,5 @@ layout(location = 0) out vec3 fragColor;
 
 void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    fragColor = vec3(1, 0.0, inPosition / 10.0f);
+    fragColor = vec3(1.f,inPosition.z,inPosition.z);
 }

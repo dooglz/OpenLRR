@@ -82,13 +82,12 @@ private:
 template <class T> struct VertexDataFormat {
   static vk::PipelineVertexInputStateCreateInfo getPipelineInputState() {
 
-    static vk::PipelineVertexInputStateCreateInfo a(
-            vk::PipelineVertexInputStateCreateFlags(),//PipelineVertexInputStateCreateFlags
-            1, // vertexBindingDescriptionCount
-            T::getBindingDescription(), //VertexInputBindingDescription
-            T::getAttributeDescriptions()->size(), //vertexAttributeDescriptionCount
-            T::getAttributeDescriptions()->data() //VertexInputAttributeDescription
-             );
+    static vk::PipelineVertexInputStateCreateInfo a(vk::PipelineVertexInputStateCreateFlags(), // PipelineVertexInputStateCreateFlags
+                                                    1,                                         // vertexBindingDescriptionCount
+                                                    T::getBindingDescription(),                // VertexInputBindingDescription
+                                                    T::getAttributeDescriptions()->size(),     // vertexAttributeDescriptionCount
+                                                    T::getAttributeDescriptions()->data()      // VertexInputAttributeDescription
+    );
     int ff = 4;
     return a;
   }
@@ -96,8 +95,8 @@ template <class T> struct VertexDataFormat {
 
 struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 pos;
-  //glm::vec3 color;
-  //Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
+  // glm::vec3 color;
+  // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
   Vertex(glm::vec3 p, glm::vec3 c) : pos{p} {};
 
   static const vk::VertexInputBindingDescription* getBindingDescription() {
@@ -105,7 +104,8 @@ struct Vertex : public VertexDataFormat<Vertex> {
     return &b;
   };
   static const std::array<vk::VertexInputAttributeDescription, 1>* getAttributeDescriptions() {
-    const static std::array<vk::VertexInputAttributeDescription, 1> attributeDescriptions = { //eR32G32B32A32Sfloat
+    const static std::array<vk::VertexInputAttributeDescription, 1> attributeDescriptions = {
+        // eR32G32B32A32Sfloat
         vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos))};
     return &attributeDescriptions;
   };
@@ -198,9 +198,11 @@ private:
 
 struct CmdBuffers {
   std::vector<vk::CommandBuffer> commandBuffers;
+  std::vector<size_t> commandBufferStates;
   CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
-  void Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent, const std::vector<vk::Framebuffer>& swapChainFramebuffers,
-              const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount, const DescriptorSets& descriptorSets);
+  void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
+              const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
+              const DescriptorSets& descriptorSets, uint32_t index);
 
 private:
   void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,

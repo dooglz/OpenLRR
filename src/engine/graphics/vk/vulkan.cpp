@@ -3,9 +3,9 @@
 //
 
 #include "vulkan.h"
+#include "../../../game/game.h"
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
-#include "../../../game/game.h"
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
@@ -26,15 +26,6 @@ std::unique_ptr<DescriptorSets> descriptorSets;
 //
 std::unique_ptr<Uniform> uniform;
 
-    /*
-const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
-const auto vertices_size = sizeof(vertices[0]) * vertices.size();
-const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
-const auto indices_size = sizeof(indices[0]) * indices.size();
-*/
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
   pipeline.reset();
@@ -76,25 +67,32 @@ void VulkanBackend::startup() {
   vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
   vbuffer->UploadVertex(vd, vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
-  
-  // render commands
-  cmdBuffers->Record(*renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ic, *descriptorSets);
+
   std::cout << "VK init Done" << std::endl;
 }
 
 void VulkanBackend::shutdown() {
   vkDeviceWaitIdle(ctx->device);
+  descriptorPool.reset();
   syncObjects.reset();
   cmdBuffers.reset();
+  uniform.reset();
   pipeline.reset();
   renderPass.reset();
   swapchain.reset();
-  descriptorSetLayout.reset();
+
+  vbuffer.reset();
   cmdPool.reset();
+  descriptorSetLayout.reset();
+
   ctx.reset();
 }
 
 void VulkanBackend::drawFrame(double dt) {
+  // render commands
+  size_t ic;
+  Game::getIndices(ic);
+
   uint32_t a = WaitForAvilibleImage(ctx->device, swapchain->swapChain, *syncObjects);
   if (a == -1) {
     RebuildSwapChain();
@@ -103,6 +101,9 @@ void VulkanBackend::drawFrame(double dt) {
       throw std::runtime_error("Can't make valid swapChain!");
     }
   }
+
+  cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ic, *descriptorSets,
+                     a);
 
   uniform->updateUniformBuffer(a, dt, swapchain->swapChainExtent);
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);

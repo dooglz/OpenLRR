@@ -1,5 +1,7 @@
 #ifndef OPENLRR_UTILS_H
 #define OPENLRR_UTILS_H
+#include <glm/ext/vector_double3.hpp>
+#include <glm/ext/quaternion_double.hpp>
 
 static glm::dvec3 GetUpVector(const glm::dquat &q) {
   return glm::dvec3(2 * (q.x * q.y - q.w * q.z), 1.0f - 2.0f * (q.x * q.x + q.z * q.z), 2.0f * (q.y * q.z + q.w * q.x));

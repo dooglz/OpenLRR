@@ -6,6 +6,7 @@
 #include "vulkan_internals.h"
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <vulkan/vulkan.hpp>
 
 void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer,
@@ -24,35 +25,66 @@ void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const 
   // vkCmdDraw(cmdBuffer, count, 1, 0, 0);
 }
 
-void CmdBuffers::Record(const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
-                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
-                        uint32_t vcount, const DescriptorSets& descriptorSets) {
-  for (size_t i = 0; i < commandBuffers.size(); i++) {
+template <typename T, typename... Rest> void hash_combine(std::size_t& seed, const T& v, const Rest&... rest) {
+  seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  (hash_combine(seed, rest), ...);
+}
 
-    vk::CommandBufferBeginInfo beginInfo;
-    commandBuffers[i].begin(beginInfo);
-
-    vk::RenderPassBeginInfo renderPassInfo;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapChainFramebuffers[i];
-    renderPassInfo.renderArea.offset = vk::Offset2D(0, 0);
-    renderPassInfo.renderArea.extent = swapChainExtent;
-    vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues = &clearColor;
-    commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-    commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
-
-    RecordCommands(vbuf, vcount, commandBuffers[i], pipeline.pipelineLayout, descriptorSets.descriptorSets[i]);
-
-    commandBuffers[i].endRenderPass();
-    commandBuffers[i].end();
+struct RecordInfo {
+  const vk::RenderPass& renderPass;
+  const Pipeline& pipeline;
+  const vk::Extent2D& swapChainExtent;
+  const VertexBuffer& vbuf;
+  uint32_t vcount, index;
+};
+struct RecordInfoHash {
+  std::size_t operator()(RecordInfo const& s) const noexcept {
+    std::size_t h = 0;
+    hash_combine(h, (void*)s.renderPass, (void*)&s.pipeline, (void*)&s.swapChainExtent, (void*)&s.vbuf, s.vcount, s.index);
+    return h;
   }
+};
+
+void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
+                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
+                        uint32_t vcount, const DescriptorSets& descriptorSets, uint32_t index) {
+
+  const RecordInfo h = {renderPass, pipeline, swapChainExtent, vbuf, vcount, index};
+  const size_t thehash = RecordInfoHash{}(h);
+
+  if (commandBufferStates[index] == thehash) {
+    return;
+  }
+
+  commandBufferStates[index] = thehash;
+
+  // commandBuffers[index].reset(vk::CommandBufferResetFlags());
+  // commandBufferStates[index] = &pipeline;
+
+  vk::CommandBufferBeginInfo beginInfo;
+  commandBuffers[index].begin(beginInfo);
+
+  vk::RenderPassBeginInfo renderPassInfo;
+  renderPassInfo.renderPass = renderPass;
+  renderPassInfo.framebuffer = swapChainFramebuffers[index];
+  renderPassInfo.renderArea.offset = vk::Offset2D(0, 0);
+  renderPassInfo.renderArea.extent = swapChainExtent;
+  vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
+  renderPassInfo.clearValueCount = 1;
+  renderPassInfo.pClearValues = &clearColor;
+  commandBuffers[index].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+  commandBuffers[index].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
+
+  RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSets.descriptorSets[index]);
+
+  commandBuffers[index].endRenderPass();
+  commandBuffers[index].end();
 }
 
 CmdBuffers::CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount) {
   commandBuffers.resize(amount);
+  commandBufferStates.resize(amount);
   vk::CommandBufferAllocateInfo allocInfo;
   allocInfo.commandPool = pool;
   allocInfo.level = vk::CommandBufferLevel::ePrimary;

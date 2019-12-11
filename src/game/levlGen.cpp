@@ -15,10 +15,10 @@ using namespace Game;
 #define perlinPush 1.5
 #define noiseToVal(mini, maxi, a) mini + (uint8_t)(round(((double)(maxi - mini)) * ((1.0 + (a * perlinPush)) * 0.5)))
 
-void Triangulate(const std::array<Tile, levelSize * levelSize> &tiles, std::array<glm::vec3, nVerts> &verts,
-                 std::array<uint16_t, indiceCount> &inidces);
+void Triangulate(const std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts,
+                 std::array<uint16_t, indiceCount>& inidces);
 
-bool canMerge(const std::vector<idx> &setA, const std::vector<idx> &setB) {
+bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   for (size_t a = 0; a < setA.size(); a++) {
     for (size_t b = 0; b < setB.size(); b++) {
       // Test if adjacent
@@ -36,11 +36,11 @@ bool canMerge(const std::vector<idx> &setA, const std::vector<idx> &setB) {
   return false;
 }
 
-bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint) {
+bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint) {
   std::vector<std::vector<idx>> emptyAreas;
   for (size_t i = 0; i < levelSize; ++i) {
     for (size_t j = 0; j < levelSize; ++j) {
-      Tile &t = tiles[j + (i * levelSize)];
+      Tile& t = tiles[j + (i * levelSize)];
       if (t.type == Tile::empty) {
         emptyAreas.push_back({{i, j}});
       }
@@ -53,8 +53,8 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
     for (size_t i = 0; i < emptyAreas.size(); i++) {
       // Can this merge with anything?
       for (size_t j = i + 1; j < emptyAreas.size(); j++) {
-        std::vector<idx> &setA = emptyAreas[i];
-        std::vector<idx> &setB = emptyAreas[j];
+        std::vector<idx>& setA = emptyAreas[i];
+        std::vector<idx>& setB = emptyAreas[j];
         if (canMerge(setA, setB)) {
           setA.insert(setA.end(), setB.begin(), setB.end());
           emptyAreas.erase(emptyAreas.begin() + j);
@@ -64,9 +64,8 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
       }
     }
   }
-  const auto &LargestCave =
-          std::max_element(emptyAreas.begin(), emptyAreas.end(),
-                           [](std::vector<idx> i, std::vector<idx> j) { return i.size() < j.size(); });
+  const auto& LargestCave =
+      std::max_element(emptyAreas.begin(), emptyAreas.end(), [](std::vector<idx> i, std::vector<idx> j) { return i.size() < j.size(); });
   if (LargestCave->size() < 10) {
     return false;
   }
@@ -75,7 +74,7 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
   idx big = (*LargestCave)[0];
   std::vector<idx> possibleSpawns;
   for (size_t i = 0; i < LargestCave->size(); i++) {
-    const auto &t = (*LargestCave)[i];
+    const auto& t = (*LargestCave)[i];
     small.x = std::min(small.x, t.x);
     small.y = std::min(small.y, t.y);
     big.x = std::max(big.y, t.y);
@@ -100,8 +99,7 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
 
   idx center = {(big.x - small.x) / 2, (big.y - small.y) / 2};
   SpawnPoint =
-          idx(*std::max_element(possibleSpawns.begin(), possibleSpawns.end(),
-                                [center](idx i, idx j) { return i.dist(center) < j.dist(center); }));
+      idx(*std::max_element(possibleSpawns.begin(), possibleSpawns.end(), [center](idx i, idx j) { return i.dist(center) < j.dist(center); }));
   tiles[SpawnPoint.y + (SpawnPoint.x * levelSize)].isSpawn = true;
 
   std::cout << emptyAreas.size() << " caves, Spawn at: " << SpawnPoint << std::endl;
@@ -121,12 +119,12 @@ void PrintMap(std::array<Tile, levelSize * levelSize> tiles) {
 std::array<Tile, levelSize * levelSize> Generate() {
   std::array<Tile, levelSize * levelSize> tiles;
   FastNoise noise, noise2;
-  noise.SetFrequency(0.1);
-  noise2.SetFrequency(0.3);
+  noise.SetFrequency(0.1f);
+  noise2.SetFrequency(0.3f);
 
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      Tile &t = tiles[j + (i * levelSize)];
+      Tile& t = tiles[j + (i * levelSize)];
       t.height = noiseToVal(0, 5, noise.GetPerlin(i, j));
       if (i == 0 || j == 0 || i == (levelSize - 1) || j == (levelSize - 1)) {
         t.type = Tile::solid;
@@ -152,7 +150,6 @@ std::array<Tile, levelSize * levelSize> Generate() {
   }
   return tiles;
 }
-
 
 Level::Level() {
   _tiles = Generate();
@@ -181,7 +178,6 @@ Level::Level() {
 
 Level::~Level() {}
 
-
 #define dimAt(a, b, s) b + (a * s)
 #define dimPos(a, s)                                                                                                                                 \
   a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
@@ -194,11 +190,7 @@ Level::~Level() {}
     {a, b}, {a, b + 1}, {a + 1, b}, { a + 1, b + 1 }                                                                                                 \
   }
 
-#define VertAt(a, b) verts[dimAt(a, b, nVertsDim)]
-
-//THIS AINT RIGHT
-#define VertPos(a) dimPos(a, nVertsDim)
-
+#define VertAt(a, b) verts[dimAt(a, b, (levelSize + 1))]
 
 std::vector<Game::idx> getAssTiles(size_t a, size_t b, size_t s) {
   s = s - 1;
@@ -219,12 +211,12 @@ std::vector<Game::idx> getAssTiles(size_t a, size_t b, size_t s) {
   return v;
 };
 
-void Triangulate(const std::array<Tile, levelSize * levelSize> &tiles,
-                 std::array<glm::vec3, nVerts> &verts, std::array<uint16_t, indiceCount> &inidces) {
+void Triangulate(const std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts,
+                 std::array<uint16_t, indiceCount>& inidces) {
 
   // set heights
   for (int i = 0; i < tiles.size(); ++i) {
-    const Tile &t = tiles[i];
+    const Tile& t = tiles[i];
     idx tp = TilePos(i);
     std::array<idx, 4> averts = {getAsosiatedVerts(tp.x, tp.y)};
     VertAt(averts[1].x, averts[1].y).z = t.height;
@@ -233,71 +225,32 @@ void Triangulate(const std::array<Tile, levelSize * levelSize> &tiles,
   verts[0].z = tiles[0].height;
   verts[verts.size() - 1].z = tiles[tiles.size() - 1].height;
 
-  for(auto& v : verts){
-    //v.z = v.z * 0.1;
-    v.z =0;
-  }
-
-  //sqaures share verts, so total verts may nto be a sqaure number
-  //So we got to do it this ass backwards way, not the way you think.
+  // sqaures share verts, so total verts may not be a sqaure number
+  // So we got to do it this ass backwards way, not the way you think.
   // set XY
   for (int k = 0; k < verts.size(); ++k) {
     glm::vec3& v = verts[k];
-    idx vp = VertPos(k);
-    v.x = vp.x;
-    v.y = vp.y;
+    v.z = v.z * 0.25;
+    v.x = (k % (levelSize + 1));
+    v.y = floor((float)k / (float)(levelSize + 1));
   }
-/*
-  for (int i = 0; i < nVertsDim; ++i) {
-    for (int j = 0; j < nVertsDim; ++j) {
-      glm::vec3 &vert = VertAt(i, j);
-      vert.x = i;
-      vert.y = j;
-    }
-  }*/
 
   // GenerateIndices
   if (indiceCount >= std::numeric_limits<uint16_t>::max()) {
     throw std::runtime_error("Map too BIG!");
   }
 
-  for (int i = 0; i < tiles.size(); ++i) {
-    // inidces[j]
-  }
   size_t ptr = 0;
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      inidces[ptr + 0] = j + (i * (levelSize + 1));
-      inidces[ptr + 1] = j + (i * (levelSize + 1)) + 1;
-      inidces[ptr + 2] = j + (i * (levelSize + 1)) + 5;
+      inidces[ptr + 0] = (uint16_t)(j + (i * (levelSize + 1)));
+      inidces[ptr + 1] = (uint16_t)(j + (i * (levelSize + 1)) + 1);
+      inidces[ptr + 2] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1));
       //
-      inidces[ptr + 3] = j + (i * (levelSize + 1)) + 1;
-      inidces[ptr + 4] = j + (i * (levelSize + 1)) + 6;
-      inidces[ptr + 5] = j + (i * (levelSize + 1)) + 5;
+      inidces[ptr + 3] = (uint16_t)(j + (i * (levelSize + 1)) + 1);
+      inidces[ptr + 4] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2));
+      inidces[ptr + 5] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1));
       ptr += 6;
     }
   }
-
 }
-// 1 - 1t - 4v
-// 2 - 4t - 9v
-// 3 - 9t - 16v
-// 4 - 16t - 25v
-
-// (1,1) > (1,1)(0,0)(1,0)(0,1)
-//(0,0) > (0,0)
-//(0,1) > (0,0) (0,2)
-//(0,2) > (0,1) (0,2)
-//(0,3) > (0,2) (0,3)
-//(0,4) > (0,3)
-
-//(1,2) >(1,2)(0,1)(0,2)(1,1)
-
-// 0,0 - 0,1,5  1,6,5
-// 0,1 - 1,2,6  2,7,6
-// 0,2 - 2,3,7  3,8,7
-// 0,3 - 3,4,8  4,9,8
-
-// 1,0 - 5,6,10 6,11,10
-// 1,1 - 6,7,11 7,12,11
-// 1,2 - 7,8,12 8,13,12
