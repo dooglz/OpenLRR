@@ -12,8 +12,8 @@ matrix:
       compiler: gcc
       env: BADGE=linuxgcc
 before_script:
-  - apt-get -qq update
-  - apt-get install -y  libx11-xcb-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+  - sudo apt-get -qq update
+  - sudo apt-get install -y  libx11-xcb-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
   - export VK_VERSION=1.1.126.0
   - wget -O vulkansdk-linux-x86_64-$VK_VERSION.tar.gz https://sdk.lunarg.com/sdk/download/$VK_VERSION/linux/vulkansdk-linux-x86_64-$VK_VERSION.tar.gz
   - tar zxf vulkansdk-linux-x86_64-$VK_VERSION.tar.gz
