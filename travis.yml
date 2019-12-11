@@ -1,0 +1,27 @@
+language: gneric
+sudo: required
+os: linux
+dist: bionic
+matrix:
+  include:
+    - os: linux
+      env: COMPILER_NAME=gcc CXX=g++-7 CC=gcc-7
+    - os: linux
+      env: COMPILER_NAME=clang CXX=clang++-7.0 CC=clang-7.0
+compiler:
+  - clang
+  - gcc
+before_script:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y  libx11-xcb-dev libxrandr-dev
+script:
+  # show OS/compiler version
+  - uname -a
+  - $CXX --version
+
+  # compile and execute 
+  - cmake --version
+  - git submodule update --init --recursive
+  - mkdir -p build && cd build
+  - cmake ..
+  - cmake --build . --target package --config Release -- -j4
