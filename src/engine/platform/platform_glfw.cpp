@@ -6,6 +6,7 @@
 #include "../../utils.h"
 #include "../Engine.h"
 #include "../graphics/vk/vulkan_internals.h"
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
