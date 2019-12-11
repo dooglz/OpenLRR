@@ -1,0 +1,46 @@
+PLEASE READ CAREFULLY BEFORE DOWNLOADING THE SOFTWARE: 
+- BY DOWNLOADING OR ACCESSING THE SOFTWARE BY ANY MEANS, YOU AGREE TO THE TERMS OF THIS LICENCE WHICH WILL BIND YOU.
+- IF YOU DO NOT AGREE TO THE TERMS OF THIS LICENCE, WE WILL NOT LICENSE THE SOFTWARE AND DOCUMENTS TO YOU AND YOU MUST DISCONTINUE THE DOWNLOADING PROCESS NOW.
+
+This license agreement is a legal agreement between you (Licensee or you) and SAM SERRELS (Licensor, us or we) for computer software, the data supplied with the software, and the associated media (Software) and online documents (Documents).
+
+Short version :
+You can download and use this however you want*. You can customize it and share it for free. 
+But you can't: 
+- alter this license.
+- sell it, rent it, lease it, sub-license it, loan it, or use it within a product which is sold commercially.
+
+*Following Restrictions apply:
+
+- [This is a proprietary license!]
+  The source code and all assets must not to be mistaken for free software, an open source in a free-software activist understanding, copy-left or public domain software. All source code and art assets remain copyrighted and licensed by SAM SERRELS. and you are allowed to use them (modify, tweak, make a derivative work, distribute, etc.) only under following conditions.
+
+- [Don't be sneaky]
+  The origin of this software must not be misrepresented; you must not claim that you wrote the original software. 
+  Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software. This notice may not be removed or altered from any source distribution. 
+
+- [Don't commit anything you don't own to us, and by commiting it to us we now own it.]
+  By making a pull request on our GitHub repository, you're stating that you're author of these changes or have rights to the changes you've made and you're giving us the right to use it in any way.
+
+- [We can change this license at any time]
+  We (Sam Serrels, Licensor, us or we) reserve the right to change this license at any time with or without notice, with immediate and/or retroactive effect. We believe that what we ask is reasonable, so please don't try to bypass it. We're trying to be open and honest, and we hope people treat us the same way back. 
+
+
+ADDITIONAL TERMS
+- We may transfer our rights and obligations under this Licence to another organisation, but this will not affect your rights or our obligations under this Licence. 
+- We may amend this Licence at any time at our sole discretion. You can view the Licence at any time on github. If you do not agree to the amendments or any of the terms of this Licence, your only remedy shall be to terminate the Licence. We shall not have any obligation to refund any Licence Fee.
+- You may only transfer your rights or your obligations under this Licence to another person if we agree in writing.
+- If we fail to insist that you perform any of your obligations under this Licence, or if we do not enforce our rights against you, or if we delay in doing so, that will not mean that we have waived our rights against you and will not mean that you do not have to comply with those obligations. If we do waive a default by you, we will only do so in writing, and that will not mean that we will automatically waive any later default by you. 
+- Each of the conditions of this Licence operates separately. If any court or competent authority decides that any of them are unlawful or unenforceable, the remaining conditions will remain in full force and effect. 
+- Please note that this Licence, its subject matter and its formation, are governed by English law. You and we both agree to that the courts of England and Wales will have non-exclusive jurisdiction. However, if you are a resident of Northern Ireland you may also bring proceedings in Northern Ireland, and if you are resident of Scotland, you may also bring proceedings in Scotland.
+
+TERMINATION
+We may terminate this Licence immediately by written notice to you if you commit a material or persistent breach of this Licence which you fail to remedy (if remediable) within 14 days after the service of written notice requiring you to do so. 
+ Upon termination for any reason:
+  all rights granted to you under this Licence shall cease;
+  you must immediately cease all activities authorised by this Licence; 
+  you must immediately delete or remove the Software from all computer equipment in your possession, and immediately destroy or return to us (at our option) all copies of the Software and Documents then in your possession, custody or control and, in the case of destruction, certify to us that you have done so.
+
+
+Copyright (&copy;) <2019>, <SAM SERRELS>
+All rights reserved.
