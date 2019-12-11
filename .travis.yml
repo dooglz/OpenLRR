@@ -19,4 +19,4 @@ script:
   # compile and execute 
   - cmake --version
   - mkdir -p build && cd build && cmake ..
-  - cd build && cmake --build . --target package --config Release -- -j4
+  - cmake --build . --target package --config Release -- -j4
