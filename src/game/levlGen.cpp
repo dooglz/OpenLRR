@@ -60,7 +60,6 @@ auto surroundTiles = [](idx t) {
   return adj;
 };
 
-
 #define VertAt(a, b) verts[dimAt(a, b, (levelSize + 1))]
 
 void PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks = false) {
@@ -77,10 +76,9 @@ void PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks = false)
   }
 }
 
-void Triangulate(std::array<Tile, levelSize * levelSize> &tiles, std::array<glm::vec3, nVerts> &verts,
-                 std::array<uint16_t, indiceCount> &inidces);
+void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
 
-bool canMerge(const std::vector<idx> &setA, const std::vector<idx> &setB) {
+bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   for (size_t a = 0; a < setA.size(); a++) {
     for (size_t b = 0; b < setB.size(); b++) {
       // Test if adjacent
@@ -98,7 +96,7 @@ bool canMerge(const std::vector<idx> &setA, const std::vector<idx> &setB) {
   return false;
 }
 
-void SquashWalls(std::array<Tile, levelSize * levelSize> &tiles) {
+void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles) {
   size_t squashcount = 0;
   bool didsquash = true;
   while (didsquash) {
@@ -106,14 +104,14 @@ void SquashWalls(std::array<Tile, levelSize * levelSize> &tiles) {
     std::vector<idx> walls;
     for (size_t i = 0; i < levelSize; ++i) {
       for (size_t j = 0; j < levelSize; ++j) {
-        Tile &t = tiles[j + (i * levelSize)];
+        Tile& t = tiles[j + (i * levelSize)];
         if (t.type == Tile::rock) {
           walls.push_back({i, j});
         }
       }
     }
     for (size_t i = 0; i < walls.size(); ++i) {
-      const idx &w = walls[i];
+      const idx& w = walls[i];
       if (w.x == 0 || w.y == 0 || w.x == levelSize - 1 || w.y == levelSize - 1) {
         continue;
       }
@@ -135,25 +133,24 @@ void SquashWalls(std::array<Tile, levelSize * levelSize> &tiles) {
       }
       didsquash = true;
       squashcount++;
-      Tile &t = tiles[w.y + (w.x * levelSize)];
+      Tile& t = tiles[w.y + (w.x * levelSize)];
       t.type = Tile::empty;
       t.rockType.reset();
       // remove me from walls
       walls.erase(walls.begin() + i);
       i--;
-
     }
   }
   std::cout << "Suqashed Rocks: " << squashcount << std::endl;
 }
 
-bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint) {
+bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint) {
   PrintMap(tiles);
   SquashWalls(tiles);
   std::vector<std::vector<idx>> emptyAreas;
   for (size_t i = 0; i < levelSize; ++i) {
     for (size_t j = 0; j < levelSize; ++j) {
-      Tile &t = tiles[j + (i * levelSize)];
+      Tile& t = tiles[j + (i * levelSize)];
       if (t.type == Tile::empty) {
         emptyAreas.push_back({{i, j}});
       }
@@ -166,8 +163,8 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
     for (size_t i = 0; i < emptyAreas.size(); i++) {
       // Can this merge with anything?
       for (size_t j = i + 1; j < emptyAreas.size(); j++) {
-        std::vector<idx> &setA = emptyAreas[i];
-        std::vector<idx> &setB = emptyAreas[j];
+        std::vector<idx>& setA = emptyAreas[i];
+        std::vector<idx>& setB = emptyAreas[j];
         if (canMerge(setA, setB)) {
           setA.insert(setA.end(), setB.begin(), setB.end());
           emptyAreas.erase(emptyAreas.begin() + j);
@@ -177,9 +174,8 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
       }
     }
   }
-  const auto &LargestCave =
-          std::max_element(emptyAreas.begin(), emptyAreas.end(),
-                           [](std::vector<idx> i, std::vector<idx> j) { return i.size() < j.size(); });
+  const auto& LargestCave =
+      std::max_element(emptyAreas.begin(), emptyAreas.end(), [](std::vector<idx> i, std::vector<idx> j) { return i.size() < j.size(); });
   if (LargestCave->size() < 10) {
     return false;
   }
@@ -188,7 +184,7 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
   idx big = (*LargestCave)[0];
   std::vector<idx> possibleSpawns;
   for (size_t i = 0; i < LargestCave->size(); i++) {
-    const auto &t = (*LargestCave)[i];
+    const auto& t = (*LargestCave)[i];
     small.x = std::min(small.x, t.x);
     small.y = std::min(small.y, t.y);
     big.x = std::max(big.y, t.y);
@@ -213,8 +209,7 @@ bool validateMap(std::array<Tile, levelSize * levelSize> &tiles, idx &SpawnPoint
 
   idx center = {(big.x - small.x) / 2, (big.y - small.y) / 2};
   SpawnPoint =
-          idx(*std::max_element(possibleSpawns.begin(), possibleSpawns.end(),
-                                [center](idx i, idx j) { return i.dist(center) < j.dist(center); }));
+      idx(*std::max_element(possibleSpawns.begin(), possibleSpawns.end(), [center](idx i, idx j) { return i.dist(center) < j.dist(center); }));
   tiles[SpawnPoint.y + (SpawnPoint.x * levelSize)].isSpawn = true;
 
   std::cout << emptyAreas.size() << " caves, Spawn at: " << SpawnPoint << std::endl;
@@ -229,7 +224,7 @@ std::array<Tile, levelSize * levelSize> Generate() {
 
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      Tile &t = tiles[j + (i * levelSize)];
+      Tile& t = tiles[j + (i * levelSize)];
       t.height = noiseToVal(0, 5, noise.GetPerlin(i, j));
       if (i == 0 || j == 0 || i == (levelSize - 1) || j == (levelSize - 1)) {
         t.type = Tile::rock;
@@ -307,13 +302,12 @@ std::vector<Game::idx> getAssTiles(size_t a, size_t b, size_t s) {
   return v;
 };
 
-void Triangulate(std::array<Tile, levelSize * levelSize> &tiles, std::array<glm::vec3, nVerts> &verts,
-                 std::array<uint16_t, indiceCount> &inidces) {
+void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces) {
 
   // set heights
   for (int i = 0; i < tiles.size(); ++i) {
 
-    Tile &t = tiles[i];
+    Tile& t = tiles[i];
     idx tp = TilePos(i);
     std::array<idx, 4> averts = {getAsosiatedVerts(tp.x, tp.y)};
     VertAt(averts[1].x, averts[1].y).z = t.height;
@@ -321,24 +315,24 @@ void Triangulate(std::array<Tile, levelSize * levelSize> &tiles, std::array<glm:
     if (t.type == Tile::rock) {
       // rocky horror
       // anywhere between 1 and 4 of the tile verts should be at wall height
-      //set to all wallheight first
-      for (const auto &adjtAvert : averts) {
+      // set to all wallheight first
+      for (const auto& adjtAvert : averts) {
         VertAt(adjtAvert.x, adjtAvert.y).z = t.height + wallheight;
       }
-      //any vert of that touches an empty should be floor height
+      // any vert of that touches an empty should be floor height
       std::vector<idx> adj = surroundTiles(tp);
       size_t sidemask = 0;
-      //std::cout << i << " (" << adj.size() << ") ";
+      // std::cout << i << " (" << adj.size() << ") ";
       for (int j = 0; j < adj.size(); ++j) {
-        const idx &adjTidx = adj[j];
-        const Tile &adjt = TileAt(adjTidx.x, adjTidx.y);
+        const idx& adjTidx = adj[j];
+        const Tile& adjt = TileAt(adjTidx.x, adjTidx.y);
         if (adjt.type != Tile::rock) {
           // std::cout << tp.orientation(adjTidx) << ", " ;
           sidemask += tp.orientation(adjTidx);
 
           std::array<idx, 4> adjtAverts = {getAsosiatedVerts(adjTidx.x, adjTidx.y)};
-          for (const auto &adjtAvert : adjtAverts) {
-            for (const auto &avert : averts) {
+          for (const auto& adjtAvert : adjtAverts) {
+            for (const auto& avert : averts) {
               if (adjtAvert == avert) {
                 VertAt(adjtAvert.x, adjtAvert.y).z = t.height;
               }
@@ -346,30 +340,37 @@ void Triangulate(std::array<Tile, levelSize * levelSize> &tiles, std::array<glm:
           }
         }
       }
-      // std::cout <<std::endl;
       t.rockmask = sidemask;
       if (sidemask > 0) {
-        //  std::cout << sidemask <<std::endl;
-        //8, 4,6,2,1
-        if (sidemask == 9 || sidemask == 6 || sidemask == 144 || sidemask == 128 || sidemask == 201 || sidemask == 22 ||
-            sidemask == 233 || sidemask == 137 || sidemask == 86 || sidemask == 118) {
+        if (sidemask == (idx::OrBit::dr) || sidemask == (idx::OrBit::ul) ||                                   // 128
+            sidemask == (idx::OrBit::u + idx::OrBit::l) ||                                                    // 9
+            sidemask == (idx::OrBit::r + idx::OrBit::d) ||                                                    // 6
+            sidemask == (idx::OrBit::ul + idx::OrBit::dr) ||                                                  // 144
+            sidemask == (idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) ||                                   // 22
+            sidemask == (idx::OrBit::ul + idx::OrBit::u + idx::OrBit::l) ||                                   // 137
+            sidemask == (idx::OrBit::ul + idx::OrBit::ur + idx::OrBit::u + idx::OrBit::l) ||                  // 201
+            sidemask == (idx::OrBit::ur + idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) ||                  // 86
+            sidemask == (idx::OrBit::ur + idx::OrBit::dl + idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) || // 118
+            sidemask == (idx::OrBit::ul + idx::OrBit::ur + idx::OrBit::dl + idx::OrBit::u + idx::OrBit::l)    // 233
+        ) {
           t.inverted = true;
         }
       }
-
     }
   }
-  verts[0].z = tiles[0].height+ wallheight;;
-  verts[verts.size() - 1].z = tiles[tiles.size() - 1].height+ wallheight;;
+  verts[0].z = tiles[0].height + wallheight;
+  ;
+  verts[verts.size() - 1].z = tiles[tiles.size() - 1].height + wallheight;
+  ;
 
   // sqaures share verts, so total verts may not be a sqaure number
   // So we got to do it this ass backwards way, not the way you think.
   // set XY
   for (int k = 0; k < verts.size(); ++k) {
-    glm::vec3 &v = verts[k];
+    glm::vec3& v = verts[k];
     v.z = v.z * 0.25;
     v.y = (k % (levelSize + 1));
-    v.x = floor((float) k / (float) (levelSize + 1));
+    v.x = floor((float)k / (float)(levelSize + 1));
   }
 
   // GenerateIndices
@@ -380,24 +381,23 @@ void Triangulate(std::array<Tile, levelSize * levelSize> &tiles, std::array<glm:
   size_t ptr = 0;
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      const Tile &t = TileAt(i, j);
+      const Tile& t = TileAt(i, j);
       if (t.inverted) {
-        inidces[ptr + 0] = (uint16_t) (j + (i * (levelSize + 1)));   //1
-        inidces[ptr + 1] = (uint16_t) (j + (i * (levelSize + 1)) + (levelSize + 2)); //4
-        inidces[ptr + 2] = (uint16_t) (j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
+        inidces[ptr + 0] = (uint16_t)(j + (i * (levelSize + 1)));                   // 1
+        inidces[ptr + 1] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)); // 4
+        inidces[ptr + 2] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
         //
-        inidces[ptr + 3] = (uint16_t) (j + (i * (levelSize + 1)));   //1
-        inidces[ptr + 4] = (uint16_t) (j + (i * (levelSize + 1)) + 1);  //2
-        inidces[ptr + 5] = (uint16_t) (j + (i * (levelSize + 1)) + (levelSize + 2)); //4
+        inidces[ptr + 3] = (uint16_t)(j + (i * (levelSize + 1)));                   // 1
+        inidces[ptr + 4] = (uint16_t)(j + (i * (levelSize + 1)) + 1);               // 2
+        inidces[ptr + 5] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)); // 4
       } else {
-        inidces[ptr + 0] = (uint16_t) (j + (i * (levelSize + 1)));   //1
-        inidces[ptr + 1] = (uint16_t) (j + (i * (levelSize + 1)) + 1); //2
-        inidces[ptr + 2] = (uint16_t) (j + (i * (levelSize + 1)) + (levelSize + 1));  //3
+        inidces[ptr + 0] = (uint16_t)(j + (i * (levelSize + 1)));                   // 1
+        inidces[ptr + 1] = (uint16_t)(j + (i * (levelSize + 1)) + 1);               // 2
+        inidces[ptr + 2] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
         //
-        inidces[ptr + 3] = (uint16_t) (j + (i * (levelSize + 1)) + 1);  //2
-        inidces[ptr + 4] = (uint16_t) (j + (i * (levelSize + 1)) + (levelSize + 2)); //4
-        inidces[ptr + 5] = (uint16_t) (j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
-
+        inidces[ptr + 3] = (uint16_t)(j + (i * (levelSize + 1)) + 1);               // 2
+        inidces[ptr + 4] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)); // 4
+        inidces[ptr + 5] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
       }
       ptr += 6;
     }
