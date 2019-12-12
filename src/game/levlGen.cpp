@@ -377,32 +377,23 @@ void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm:
   if (indiceCount >= std::numeric_limits<uint16_t>::max()) {
     throw std::runtime_error("Map too BIG!");
   }
-
   size_t ptr = 0;
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      const Tile& t = TileAt(i, j);
+      Tile& t = TileAt(i, j);
+      const uint16_t ti[4] = {
+          (uint16_t)(j + (i * (levelSize + 1))),
+          (uint16_t)(j + (i * (levelSize + 1)) + 1),
+          (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)),
+          (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)),
+      };
       if (t.inverted) {
-        inidces[ptr + 0] = (uint16_t)(j + (i * (levelSize + 1)));                   // 1
-        inidces[ptr + 1] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)); // 4
-        inidces[ptr + 2] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
-        //
-        inidces[ptr + 3] = (uint16_t)(j + (i * (levelSize + 1)));                   // 1
-        inidces[ptr + 4] = (uint16_t)(j + (i * (levelSize + 1)) + 1);               // 2
-        inidces[ptr + 5] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)); // 4
+        t.tileIndices = {ti[0], ti[3], ti[2], ti[0], ti[1], ti[3]};
       } else {
-        inidces[ptr + 0] = (uint16_t)(j + (i * (levelSize + 1)));                   // 1
-        inidces[ptr + 1] = (uint16_t)(j + (i * (levelSize + 1)) + 1);               // 2
-        inidces[ptr + 2] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
-        //
-        inidces[ptr + 3] = (uint16_t)(j + (i * (levelSize + 1)) + 1);               // 2
-        inidces[ptr + 4] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)); // 4
-        inidces[ptr + 5] = (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)); // 3
+        t.tileIndices = {ti[0], ti[1], ti[2], ti[1], ti[3], ti[2]};
       }
+      std::copy(t.tileIndices.begin(), t.tileIndices.end(), &inidces[ptr]);
       ptr += 6;
     }
   }
 }
-// 1 --- 2
-// |     |
-// 3 --- 4

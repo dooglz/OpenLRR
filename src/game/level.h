@@ -32,6 +32,7 @@ struct Tile {
   bool isSpawn = false;
   bool inverted = false;
   size_t rockmask = 0;
+  std::array<uint16_t, 6> tileIndices;
 
   Tile() : type{empty}, height{1} {};
 
