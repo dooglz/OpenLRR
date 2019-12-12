@@ -26,6 +26,8 @@ struct Tile {
   uint8_t height;
   std::optional<RockTypes> rockType;
   bool isSpawn = false;
+  bool inverted = false;
+  size_t rockmask =0;
   Tile() : type{empty}, height{1} {};
   char tostr() {
     if (isSpawn) {
@@ -59,6 +61,37 @@ struct idx {
   idx(int a, int b) : x{(size_t)a}, y{(size_t)b} {};
   bool operator==(const idx& a) { return a.x == x && a.y == y; }
   friend bool operator==(const idx& a, const idx& b) { return a.x == b.x && a.y == b.y; }
+  enum OrientationBit{
+    d =2,
+    r = 4,
+    f = 1,
+    u = 8,
+    dr = 16,
+    dl = 32,
+    ul =128,
+    ur = 64,
+  };
+  size_t orientation(const idx& a){
+    //down -2
+    //right - 4
+    //left -1
+    //up - 8
+    //bad == 9, 6
+    //dr = 16
+    //dl = 32
+    //ul =128
+    //ur = 64
+    auto difX  = (float)a.x - (float)x;
+    auto difY  = (float)a.y - (float)y;
+
+    if(abs(difX) > abs (difY)){
+      return difX>0? 2 : 8;
+    }else if(abs(difX) < abs (difY)){
+      return difY>0? 4 : 1;
+    }else{
+      return difX>0? (difY>0 ? 16: 32) : (difY>0? 64:128);
+    }
+  }
   // Copy assignment operator.
   /*idx& operator=(const idx& other) {
     if (this != &other) {
