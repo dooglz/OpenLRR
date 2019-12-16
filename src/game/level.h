@@ -6,8 +6,10 @@
 #include <array>
 #include <cmath>
 #include <glm/glm.hpp>
-#include <iostream>
+//#include <iostream>
 #include <optional>
+
+#include "idx.h"
 
 namespace Game {
 const size_t squareSize = 4;
@@ -20,12 +22,8 @@ const size_t indiceCount = nTiles * 2 * 3;
 const bool FLATLEVEL = true;
 
 struct Tile {
-  enum TileType {
-    empty, rock, water, TileTypeCount
-  };
-  enum RockTypes {
-    solid, hard, lose, dirt, vein, RockTypesCount
-  };
+  enum TileType { empty, rock, water, TileTypeCount };
+  enum RockTypes { solid, hard, lose, dirt, vein, RockTypesCount };
   TileType type;
   uint8_t height;
   std::optional<RockTypes> rockType;
@@ -41,68 +39,14 @@ struct Tile {
       return 'S';
     }
     switch (type) {
-      case empty:
-        return ' ';
-      case water:
-        return '-';
-      case rock:
-        return ((char) rockType.value()) + 48;
-      default:
-        return 'Z';
-    }
-  }
-};
-
-struct idx {
-  size_t x, y;
-
-  double dist(const idx &a) { return sqrt(((double) a.y - (double) y) + ((double) a.x - (double) x)); }
-
-  // bool adjacent(const idx& a) const { return false; }
-  bool surround(const idx &a) const {
-    return (a.x == x - 1 || a.x == x || a.x == x + 1) && (a.y == y - 1 || a.y == y || a.y == y + 1);
-  }
-
-  bool adjacent(const idx &a) const {
-    return (a.x == x && (a.y == y - 1 || a.y == y + 1)) || (a.y == y && (a.x == x - 1 || a.x == x + 1));
-  }
-
-  friend std::ostream &operator<<(std::ostream &os, const idx &dt) {
-    os << "[" << dt.x << '/' << dt.y << ']';
-    return os;
-  }
-
-  idx() : x{0}, y{0} {};
-
-  idx(size_t a, size_t b) : x{a}, y{b} {};
-
-  idx(int a, int b) : x{(size_t) a}, y{(size_t) b} {};
-
-  bool operator==(const idx &a) { return a.x == x && a.y == y; }
-
-  friend bool operator==(const idx &a, const idx &b) { return a.x == b.x && a.y == b.y; }
-
-  enum OrBit {
-    l = 1,
-    d = 2,
-    r = 4,
-    u = 8,
-    dr = 16,
-    dl = 32,
-    ur = 64,
-    ul = 128,
-  };
-
-  size_t orientation(const idx &a) {
-    auto difX = (float) a.x - (float) x;
-    auto difY = (float) a.y - (float) y;
-
-    if (abs(difX) > abs(difY)) {
-      return difX > 0 ? OrBit::d : OrBit::u;
-    } else if (abs(difX) < abs(difY)) {
-      return difY > 0 ? OrBit::r : OrBit::l;
-    } else {
-      return difX > 0 ? (difY > 0 ? OrBit::dr : OrBit::dl) : (difY > 0 ? OrBit::ur : OrBit::ul);
+    case empty:
+      return ' ';
+    case water:
+      return '-';
+    case rock:
+      return ((char)rockType.value()) + 48;
+    default:
+      return 'Z';
     }
   }
 };
@@ -110,15 +54,20 @@ struct idx {
 class Level {
 public:
   Level();
-
   ~Level();
-
+  void Render();
   std::array<Tile, levelSize * levelSize> _tiles;
   std::array<glm::vec3, nVerts> _verts;
   std::array<uint16_t, indiceCount> _inidces;
+  //
   idx _spawnpoint;
 
 private:
+  // LevelGen.cpp
+  bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint);
+  void PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks = false);
+  void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
+  void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles);
+  std::array<Tile, levelSize * levelSize> Generate();
 };
-
 } // namespace Game

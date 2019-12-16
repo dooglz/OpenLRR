@@ -16,53 +16,7 @@ using namespace Game;
 #define perlinPush 1.5
 #define noiseToVal(mini, maxi, a) mini + (uint8_t)(round(((double)(maxi - mini)) * ((1.0 + (a * perlinPush)) * 0.5)))
 
-#define dimAt(a, b, s) b + (a * s)
-#define dimPos(a, s)                                                                                                                                 \
-  a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
-
-#define TileAt(a, b) tiles[dimAt(a, b, levelSize)];
-#define TilePos(a) dimPos(a, levelSize);
-
-#define getAsosiatedVerts(a, b)                                                                                                                      \
-  {                                                                                                                                                  \
-    {a, b}, {a, b + 1}, {a + 1, b}, { a + 1, b + 1 }                                                                                                 \
-  }
-auto adjacentTiles = [](idx t) {
-  std::vector<idx> adj;
-  if (t.x > 0) {
-    adj.push_back({t.x - 1, t.y});
-  }
-  if (t.y > 0) {
-    adj.push_back({t.x, t.y - 1});
-  }
-  if (t.x < levelSize - 1) {
-    adj.push_back({t.x + 1, t.y});
-  }
-  if (t.y < levelSize - 1) {
-    adj.push_back({t.x, t.y + 1});
-  }
-  return adj;
-};
-auto surroundTiles = [](idx t) {
-  std::vector<idx> adj = adjacentTiles(t);
-  if (t.x > 0 && t.y > 0) {
-    adj.push_back({t.x - 1, t.y - 1});
-  }
-  if (t.x < levelSize - 1 && t.y < levelSize - 1) {
-    adj.push_back({t.x + 1, t.y + 1});
-  }
-  if (t.x > 0 && t.y < levelSize - 1) {
-    adj.push_back({t.x - 1, t.y + 1});
-  }
-  if (t.y > 0 && t.x < levelSize - 1) {
-    adj.push_back({t.x + 1, t.y - 1});
-  }
-  return adj;
-};
-
-#define VertAt(a, b) verts[dimAt(a, b, (levelSize + 1))]
-
-void PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks = false) {
+void Level::PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks) {
   std::cout << std::endl;
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
@@ -96,7 +50,7 @@ bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   return false;
 }
 
-void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles) {
+void Level::SquashWalls(std::array<Tile, levelSize * levelSize>& tiles) {
   size_t squashcount = 0;
   bool didsquash = true;
   while (didsquash) {
@@ -144,7 +98,7 @@ void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles) {
   std::cout << "Suqashed Rocks: " << squashcount << std::endl;
 }
 
-bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint) {
+bool Level::validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint) {
   PrintMap(tiles);
   SquashWalls(tiles);
   std::vector<std::vector<idx>> emptyAreas;
@@ -216,7 +170,7 @@ bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint
   return true;
 }
 
-std::array<Tile, levelSize * levelSize> Generate() {
+std::array<Tile, levelSize * levelSize> Level::Generate() {
   std::array<Tile, levelSize * levelSize> tiles;
   FastNoise noise, noise2;
   noise.SetFrequency(0.1f);
@@ -254,146 +208,4 @@ std::array<Tile, levelSize * levelSize> Generate() {
     }
   }
   return tiles;
-}
-
-Level::Level() {
-  _tiles = Generate();
-
-  bool generated = false;
-  const bool shouldV = false;
-  if (shouldV) {
-    for (size_t i = 0; i < 20; i++) {
-      if (validateMap(_tiles, _spawnpoint)) {
-        generated = true;
-        break;
-      }
-      std::cout << "." << std::endl;
-      _tiles = Generate();
-    }
-    if (!generated) {
-      throw std::runtime_error("LevelGen no validate");
-    }
-  } else {
-    validateMap(_tiles, _spawnpoint);
-  }
-  PrintMap(_tiles);
-  Triangulate(_tiles, _verts, _inidces);
-  PrintMap(_tiles, true);
-  std::cout << _verts.size() << " verts,  indices:" << _inidces.size() << std::endl;
-}
-
-Level::~Level() {}
-
-std::vector<Game::idx> getAssTiles(size_t a, size_t b, size_t s) {
-  s = s - 1;
-  std::vector<Game::idx> v;
-  if (a < s && b < s) {
-    v.emplace(v.end(), a, b);
-  }
-  if (a > 0 && b < s) {
-    v.emplace(v.end(), a - 1, b);
-  }
-  if (b > 0 && a < s) {
-    v.emplace(v.end(), a, b - 1);
-  }
-  if (a > 0 && b > 0) {
-    v.emplace(v.end(), a - 1, b - 1);
-  }
-  return v;
-};
-
-void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces) {
-
-  // set heights
-  for (int i = 0; i < tiles.size(); ++i) {
-
-    Tile& t = tiles[i];
-    idx tp = TilePos(i);
-    std::array<idx, 4> averts = {getAsosiatedVerts(tp.x, tp.y)};
-    VertAt(averts[1].x, averts[1].y).z = t.height;
-    VertAt(averts[2].x, averts[2].y).z = t.height;
-    if (t.type == Tile::rock) {
-      // rocky horror
-      // anywhere between 1 and 4 of the tile verts should be at wall height
-      // set to all wallheight first
-      for (const auto& adjtAvert : averts) {
-        VertAt(adjtAvert.x, adjtAvert.y).z = t.height + wallheight;
-      }
-      // any vert of that touches an empty should be floor height
-      std::vector<idx> adj = surroundTiles(tp);
-      size_t sidemask = 0;
-      // std::cout << i << " (" << adj.size() << ") ";
-      for (int j = 0; j < adj.size(); ++j) {
-        const idx& adjTidx = adj[j];
-        const Tile& adjt = TileAt(adjTidx.x, adjTidx.y);
-        if (adjt.type != Tile::rock) {
-          // std::cout << tp.orientation(adjTidx) << ", " ;
-          sidemask += tp.orientation(adjTidx);
-
-          std::array<idx, 4> adjtAverts = {getAsosiatedVerts(adjTidx.x, adjTidx.y)};
-          for (const auto& adjtAvert : adjtAverts) {
-            for (const auto& avert : averts) {
-              if (adjtAvert == avert) {
-                VertAt(adjtAvert.x, adjtAvert.y).z = t.height;
-              }
-            }
-          }
-        }
-      }
-      t.rockmask = sidemask;
-      if (sidemask > 0) {
-        if (sidemask == (idx::OrBit::dr) || sidemask == (idx::OrBit::ul) ||                                   // 128
-            sidemask == (idx::OrBit::u + idx::OrBit::l) ||                                                    // 9
-            sidemask == (idx::OrBit::r + idx::OrBit::d) ||                                                    // 6
-            sidemask == (idx::OrBit::ul + idx::OrBit::dr) ||                                                  // 144
-            sidemask == (idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) ||                                   // 22
-            sidemask == (idx::OrBit::ul + idx::OrBit::u + idx::OrBit::l) ||                                   // 137
-            sidemask == (idx::OrBit::ul + idx::OrBit::ur + idx::OrBit::u + idx::OrBit::l) ||                  // 201
-            sidemask == (idx::OrBit::ur + idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) ||                  // 86
-            sidemask == (idx::OrBit::ur + idx::OrBit::dl + idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) || // 118
-            sidemask == (idx::OrBit::ul + idx::OrBit::ur + idx::OrBit::dl + idx::OrBit::u + idx::OrBit::l)    // 233
-        ) {
-          t.inverted = true;
-        }
-      }
-    }
-  }
-  verts[0].z = tiles[0].height + wallheight;
-  ;
-  verts[verts.size() - 1].z = tiles[tiles.size() - 1].height + wallheight;
-  ;
-
-  // sqaures share verts, so total verts may not be a sqaure number
-  // So we got to do it this ass backwards way, not the way you think.
-  // set XY
-  for (int k = 0; k < verts.size(); ++k) {
-    glm::vec3& v = verts[k];
-    v.z = v.z * 0.25;
-    v.y = (k % (levelSize + 1));
-    v.x = floor((float)k / (float)(levelSize + 1));
-  }
-
-  // GenerateIndices
-  if (indiceCount >= std::numeric_limits<uint16_t>::max()) {
-    throw std::runtime_error("Map too BIG!");
-  }
-  size_t ptr = 0;
-  for (int i = 0; i < levelSize; ++i) {
-    for (int j = 0; j < levelSize; ++j) {
-      Tile& t = TileAt(i, j);
-      const uint16_t ti[4] = {
-          (uint16_t)(j + (i * (levelSize + 1))),
-          (uint16_t)(j + (i * (levelSize + 1)) + 1),
-          (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 1)),
-          (uint16_t)(j + (i * (levelSize + 1)) + (levelSize + 2)),
-      };
-      if (t.inverted) {
-        t.tileIndices = {ti[0], ti[3], ti[2], ti[0], ti[1], ti[3]};
-      } else {
-        t.tileIndices = {ti[0], ti[1], ti[2], ti[1], ti[3], ti[2]};
-      }
-      std::copy(t.tileIndices.begin(), t.tileIndices.end(), &inidces[ptr]);
-      ptr += 6;
-    }
-  }
 }
