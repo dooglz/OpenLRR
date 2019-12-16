@@ -9,6 +9,7 @@
 //#include <iostream>
 #include <optional>
 
+#include "game_graphics.h"
 #include "idx.h"
 
 namespace Game {
@@ -30,7 +31,9 @@ struct Tile {
   bool isSpawn = false;
   bool inverted = false;
   size_t rockmask = 0;
-  std::array<uint16_t, 6> tileIndices;
+
+
+
 
   Tile() : type{empty}, height{1} {};
 
@@ -56,11 +59,14 @@ public:
   Level();
   ~Level();
   void Render();
+
   std::array<Tile, levelSize * levelSize> _tiles;
-  std::array<glm::vec3, nVerts> _verts;
-  std::array<uint16_t, indiceCount> _inidces;
+  std::vector<Vertex> _verts;
+  std::vector<uint16_t> _inidces;
   //
   idx _spawnpoint;
+
+
 
 private:
   // LevelGen.cpp
@@ -69,5 +75,7 @@ private:
   void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
   void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles);
   std::array<Tile, levelSize * levelSize> Generate();
+  void Triangulate2(std::vector<Vertex>& allVerts,
+                    std::vector<uint16_t>& allIndices);
 };
 } // namespace Game

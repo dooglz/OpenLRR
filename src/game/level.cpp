@@ -1,5 +1,25 @@
 #include "level.h"
+#include "../engine/graphics/vk/vulkan_internals.h"
 using namespace Game;
+
+bool ShouldBeInverted(size_t sidemask){
+  if (sidemask > 0) {
+    if (sidemask == (idx::OrBit::dr) || sidemask == (idx::OrBit::ul) ||                                   // 128
+        sidemask == (idx::OrBit::u + idx::OrBit::l) ||                                                    // 9
+        sidemask == (idx::OrBit::r + idx::OrBit::d) ||                                                    // 6
+        sidemask == (idx::OrBit::ul + idx::OrBit::dr) ||                                                  // 144
+        sidemask == (idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) ||                                   // 22
+        sidemask == (idx::OrBit::ul + idx::OrBit::u + idx::OrBit::l) ||                                   // 137
+        sidemask == (idx::OrBit::ul + idx::OrBit::ur + idx::OrBit::u + idx::OrBit::l) ||                  // 201
+        sidemask == (idx::OrBit::ur + idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) ||                  // 86
+        sidemask == (idx::OrBit::ur + idx::OrBit::dl + idx::OrBit::dr + idx::OrBit::r + idx::OrBit::d) || // 118
+        sidemask == (idx::OrBit::ul + idx::OrBit::ur + idx::OrBit::dl + idx::OrBit::u + idx::OrBit::l)    // 233
+    ) {
+     return true;
+    }
+  }
+  return false;
+}
 
 Game::Level::Level() {
   _tiles = Generate();
@@ -22,15 +42,84 @@ Game::Level::Level() {
     validateMap(_tiles, _spawnpoint);
   }
   PrintMap(_tiles);
-  Triangulate(_tiles, _verts, _inidces);
+  Triangulate2( _verts, _inidces);
   PrintMap(_tiles, true);
   std::cout << _verts.size() << " verts,  indices:" << _inidces.size() << std::endl;
 }
 
 Level::~Level() {}
 
+void Level::Triangulate2(std::vector<Vertex>& allVerts,
+                         std::vector<uint16_t>& allIndices) {
+
+  //std::vector<Vertex> allVerts;
+  allVerts.clear();
+  allVerts.reserve(_tiles.size()*4);
+  //std::vector<uint16_t> allIndices;
+  allIndices.clear();
+  allIndices.reserve(_tiles.size()*6);
+
+  for (int i = 0; i < _tiles.size(); ++i) {
+    std::array<Vertex,4> myVerts;
+    std::array<uint16_t,6> myIndices;
+    Tile& t = _tiles[i];
+    idx tp = TilePos(i);
+    std::array<idx, 4> vertPositions = {getAsosiatedVerts(tp.x, tp.y)};
+    for (int j = 0; j < 4; ++j) {
+      myVerts[j].p = glm::vec3(vertPositions[j].x,vertPositions[j].y,(j == 1 || j==2 ? t.height : 0));
+      if (t.type == Tile::rock) {
+        myVerts[j].c = {1.f,0.f,0.f};
+      }else{
+        myVerts[j].c = {0.f,1.f,0.f};
+      }
+    }
+    if (t.type == Tile::rock) {
+
+      // rocky horror
+      // anywhere between 1 and 4 of the tile verts should be at wall height
+      // set to all wall height first. if a vert touches T!rock, it goes to t.height
+      for (auto& v : myVerts) {
+        v.p.z = t.height + wallheight;
+      }
+      std::vector<idx> surTiles = tp.getSurTiles(levelSize);
+      size_t sidemask = 0;
+      for (int j = 0; j < surTiles.size(); ++j) {
+        const idx& surTidx = surTiles[j];
+        const Tile& surT = TileAt(_tiles,surTidx.x, surTidx.y);
+        if (surT.type != Tile::rock) {
+          sidemask += tp.orientation(surTidx);
+          // find all matching verts with neighbour.
+          std::array<idx, 4> surTverts = {getAsosiatedVerts(surTidx.x, surTidx.y)};
+          for (const auto& surTvert : surTverts) {
+            for (int k = 0; k < vertPositions.size(); ++k) {
+              if (surTvert == vertPositions[k]) {
+                myVerts[k].p.z = t.height;
+              }
+            }
+          }
+        }
+      }
+      t.rockmask = sidemask;
+      t.inverted = ShouldBeInverted(sidemask);
+    }//End RockyHorror
+    if (t.inverted) {
+      myIndices = {0,3,2,0,1,3};
+    } else {
+      myIndices = {0,1,2,1,3,2};
+    }
+    //join the world
+    allVerts.insert(allVerts.end(), myVerts.begin(), myVerts.end());
+    auto ofsetIndices = std::transform(myIndices.begin(), myIndices.end(), std::back_inserter(allIndices), [&i](auto& c){return c+(i*6);});
+  //  allIndices.insert(allIndices.end(), ofsetIndices.begin(), ofsetIndices.end());
+  }
+  std::cout << "WamBam" << std::endl;
+}
+
 void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts,
                         std::array<uint16_t, indiceCount>& inidces) {
+//  Triangulate2();
+/*
+
 
   // set heights
   for (int i = 0; i < tiles.size(); ++i) {
@@ -38,14 +127,15 @@ void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::arr
     Tile& t = tiles[i];
     idx tp = TilePos(i);
     std::array<idx, 4> averts = {getAsosiatedVerts(tp.x, tp.y)};
-    VertAt(averts[1].x, averts[1].y).z = t.height;
-    VertAt(averts[2].x, averts[2].y).z = t.height;
+    VertAt(verts,averts[1].x, averts[1].y).z = t.height;
+    VertAt(verts,averts[2].x, averts[2].y).z = t.height;
     if (t.type == Tile::rock) {
+
       // rocky horror
       // anywhere between 1 and 4 of the tile verts should be at wall height
       // set to all wallheight first
       for (const auto& adjtAvert : averts) {
-        VertAt(adjtAvert.x, adjtAvert.y).z = t.height + wallheight;
+        VertAt(verts,adjtAvert.x, adjtAvert.y).z = t.height + wallheight;
       }
       // any vert of that touches an empty should be floor height
       std::vector<idx> adj = tp.getSurTiles(levelSize);
@@ -53,7 +143,7 @@ void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::arr
       // std::cout << i << " (" << adj.size() << ") ";
       for (int j = 0; j < adj.size(); ++j) {
         const idx& adjTidx = adj[j];
-        const Tile& adjt = TileAt(adjTidx.x, adjTidx.y);
+        const Tile& adjt = TileAt(tiles,adjTidx.x, adjTidx.y);
         if (adjt.type != Tile::rock) {
           // std::cout << tp.orientation(adjTidx) << ", " ;
           sidemask += tp.orientation(adjTidx);
@@ -62,7 +152,7 @@ void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::arr
           for (const auto& adjtAvert : adjtAverts) {
             for (const auto& avert : averts) {
               if (adjtAvert == avert) {
-                VertAt(adjtAvert.x, adjtAvert.y).z = t.height;
+            //    VertAt(adjtAvert.x, adjtAvert.y).z = t.height;
               }
             }
           }
@@ -87,9 +177,8 @@ void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::arr
     }
   }
   verts[0].z = tiles[0].height + wallheight;
-  ;
   verts[verts.size() - 1].z = tiles[tiles.size() - 1].height + wallheight;
-  ;
+
 
   // sqaures share verts, so total verts may not be a sqaure number
   // So we got to do it this ass backwards way, not the way you think.
@@ -108,7 +197,7 @@ void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::arr
   size_t ptr = 0;
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
-      Tile& t = TileAt(i, j);
+      //Tile& t = TileAt(i, j);
       const uint16_t ti[4] = {
           (uint16_t)(j + (i * (levelSize + 1))),
           (uint16_t)(j + (i * (levelSize + 1)) + 1),
@@ -125,6 +214,7 @@ void Level::Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::arr
       ptr += 6;
     }
   }
+  */
 }
 
 void Level::Render() {}

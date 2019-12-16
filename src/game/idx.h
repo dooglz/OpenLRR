@@ -57,7 +57,7 @@ struct idx {
 #define dimPos(a, s)                                                                                                                                 \
   a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
 
-#define TileAt(a, b) tiles[dimAt(a, b, levelSize)];
+#define TileAt(v,a, b) v[dimAt(a, b, levelSize)];
 #define TilePos(a) dimPos(a, levelSize);
 
 #define getAsosiatedVerts(a, b)                                                                                                                      \
@@ -65,6 +65,6 @@ struct idx {
     {a, b}, {a, b + 1}, {a + 1, b}, { a + 1, b + 1 }                                                                                                 \
   }
 
-#define VertAt(a, b) verts[dimAt(a, b, (levelSize + 1))]
+#define VertAt(v,a, b) v[dimAt(a, b, (levelSize + 1))]
 } // namespace Game
 #endif // OPENLRR_IDX_H

@@ -59,13 +59,19 @@ void VulkanBackend::startup() {
   // data
 
   size_t vc, ic;
-  glm::vec3* vd = Game::getVertices(vc);
+  Game::Vertex* vd = Game::getVertices(vc);
   glm::uint16_t* id = Game::getIndices(ic);
-  const auto vertices_size = sizeof(vd[0]) * vc;
+
+  std::vector<Vertex> convertedVertexes;
+  for (int i = 0; i < vc; ++i) {
+    convertedVertexes.push_back(vd[i]);
+  }
+  //auto ofsetIndices = std::transform(myIndices.begin(), myIndices.end(), std::back_inserter(ConvertedVertexes), [&i](auto& c){return c+(i*6);});
+  const auto vertices_size = sizeof(convertedVertexes[0]) * vc;
   const auto indices_size = sizeof(id[0]) * ic;
 
   vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
-  vbuffer->UploadVertex(vd, vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 
   std::cout << "VK init Done" << std::endl;

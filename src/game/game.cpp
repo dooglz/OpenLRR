@@ -1,4 +1,5 @@
 #include "game.h"
+#include "game_graphics.h"
 #include "level.h"
 #include <memory>
 #include <vector>
@@ -37,13 +38,13 @@ std::vector<uint16_t> Aindices = {
     //
     8, 9, 10};
 
-std::vector<glm::vec3> aa;
-glm::vec3* Game::getVertices(size_t& count) {
+std::vector<Game::Vertex> aa;
+Game::Vertex* Game::getVertices(size_t& count) {
 
-  aa = std::vector<glm::vec3>(level->_verts.begin(), level->_verts.end());
-  aa.push_back({level->_spawnpoint.x - 0.5, level->_spawnpoint.y, 0});
-  aa.push_back({level->_spawnpoint.x, level->_spawnpoint.y, 3});
-  aa.push_back({level->_spawnpoint.x + 0.5, level->_spawnpoint.y, 0});
+  aa = std::vector<Vertex>(level->_verts.begin(), level->_verts.end());
+  aa.push_back({{level->_spawnpoint.x - 0.5, level->_spawnpoint.y, 0},{0,1,1}});
+  aa.push_back({{level->_spawnpoint.x, level->_spawnpoint.y, 3},{1,0,1}});
+  aa.push_back({{level->_spawnpoint.x + 0.5, level->_spawnpoint.y, 0},{1,1,0}});
   count = aa.size();
   return aa.data();
 

@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+#include "../../../game/game_graphics.h"
 
 const bool ENABLE_VSYNC = false;
 // things that exist for whole applicaiton
@@ -98,7 +99,7 @@ struct Vertex : public VertexDataFormat<Vertex> {
   // glm::vec3 color;
   // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
   Vertex(glm::vec3 p, glm::vec3 c) : pos{p} {};
-
+  Vertex(const Game::Vertex& v) : pos{v.p} {};
   static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
