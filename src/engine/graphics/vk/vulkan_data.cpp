@@ -165,8 +165,13 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
 
   glm::dmat4 view = glm::lookAt(pos, pos + forwards, up);
 
+  //auto camera_dir = pos +  glm::rotate(cq, glm::dvec3(1, 0, 0));
+  //auto camera_up = glm::rotate(cq, glm::dvec3(0, 0, 1));
+  view = glm::mat4_cast(cq) * glm::translate(glm::dmat4(1.0),-pos);
+
+
   glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 1000.0);
-  proj[1][1] *= -1;
+  //proj[1][1] *= -1;
   glm::dmat4 mvp = proj * view * model;
   // downgrade to float beacuse gpus don't like numbers
   const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp};

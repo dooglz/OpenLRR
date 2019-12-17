@@ -54,11 +54,11 @@ size_t idx::orientation(const idx& me, const idx& other) {
   auto difY = (float)other.y - (float)me.y;
 
   if (abs(difX) > abs(difY)) {
-    return difX > 0 ? OrBit::d : OrBit::u;
+    return difX > 0 ? OrBit::r : OrBit::l;
   } else if (abs(difX) < abs(difY)) {
-    return difY > 0 ? OrBit::r : OrBit::l;
+    return difY > 0 ? OrBit::d : OrBit::u;
   } else {
-    return difX > 0 ? (difY > 0 ? OrBit::dr : OrBit::dl) : (difY > 0 ? OrBit::ur : OrBit::ul);
+    return difX > 0 ? (difY > 0 ? OrBit::dr : OrBit::ur) : (difY > 0 ? OrBit::dl : OrBit::ul);
   }
 }
 size_t idx::orientation(const idx& other) const { return idx::orientation(*this, other); }

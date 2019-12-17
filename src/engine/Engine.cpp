@@ -80,14 +80,20 @@ void Engine::Go() {
 
 void Engine::Shutdown() { vk.shutdown(); }
 
-glm::dvec3 camPos = glm::dvec3(0.0, -2.0, 0.5);
-glm::dquat camRot = glm::quat_cast(glm::lookAt(glm::dvec3(0, 1.0, 0), glm::dvec3(0, 0, 0), glm::dvec3(0, 0., 1.0)));
-
-// = glm::quat_cast(glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+glm::dvec3 camPos = glm::dvec3(4.0, 8.0, 5.0);
+// glm::dquat camRot = glm::dquat(0.9,0.37,0,0);
+glm::dquat camRot = glm::quat_cast(glm::lookAt(camPos, glm::dvec3(4, 2, 0), glm::dvec3(0, 0, -1.0)));
 
 glm::dvec3 Engine::getCamPos() { return camPos; }
 
-void Engine::setCamPos(const glm::dvec3& p) { camPos = p; }
+void Engine::setCamPos(const glm::dvec3& p) {
+  camPos = p;
+//  std::cout << p.x << " " << p.y << " " << p.z << std::endl;
+}
 glm::dquat Engine::getCamRot() { return camRot; }
 
-void Engine::setCamRot(const glm::dquat& p) { camRot = p; }
+void Engine::setCamRot(const glm::dquat& p) {
+ // auto gg = normalize(GetForwardVector(p));
+  //std::cout << "R: " << gg.x << " " << gg.y << " " << gg.z << std::endl;
+  camRot = p;
+}

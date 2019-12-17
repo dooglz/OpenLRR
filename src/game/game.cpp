@@ -10,23 +10,33 @@ void Game::StartUp() { level = std::make_unique<Game::Level>(); }
 
 void Game::Tick(double dt) {}
 
-std::vector<glm::vec3> Avertices = {
+#define RED                                                                                                                                          \
+  { 1, 0, 0 }
+#define GREEN                                                                                                                                        \
+  { 0, 1, 0 }
+#define BLUE                                                                                                                                         \
+  { 0, 0, 1 }
+#define PINK                                                                                                                                         \
+  { 1, 0, 1 }
+#define YONG                                                                                                                                         \
+  { 1, 1, 0 }
+
+std::vector<Game::Vertex> Avertices = {
     // center Square
-    {-0.5f, -0.5f, 0.f},
-    {0.5f, -0.5f, 0.f},
-    {0.5f, 0.5f, 0.f},
-    {-0.5f, 0.5f, 0.f},
-    // X point
-    {1.0f, 0.f, 0.f},
-    // ypoint
-    {0.0f, 1.f, 0.f},
-    {0.25f, 0.5f, 0.f},
-    {-0.25f, 0.5f, 0.f},
+    {{-0.5f, -0.5f, 0.f}, RED, {0, 0, 1}},
+    {{0.5f, -0.5f, 0.f}, RED, {0, 0, 1}},
+    {{0.5f, 0.5f, 0.f}, RED, {0, 0, 1}},
+    {{-0.5f, 0.5f, 0.f}, RED, {0, 0, 1}},
+    // X point,
+    {{1.0f, 0.f, 0.f}, GREEN, {0, 0, 1}},
+    // ypoint,
+    {{0.0f, 1.f, 0.f}, PINK, {0, 0, 1}},
+    {{0.25f, 0.5f, 0.f}, RED, {0, 0, 1}},
+    {{-0.25f, 0.5f, 0.f}, RED, {0, 0, 1}},
     // zpoint
-    {0, 0, 1.f},
-    {-0.25f, 0, 0},
-    {0.25f, 0, 0},
-};
+    {{0, 0, 1.f}, YONG, {0, 0, 1}},
+    {{-0.25f, 0, 0}, RED, {0, 0, 1}},
+    {{0.25f, 0, 0}, RED, {0, 0, 1}}};
 
 std::vector<uint16_t> Aindices = {
     // center Square
@@ -40,41 +50,19 @@ std::vector<uint16_t> Aindices = {
 
 std::vector<Game::Vertex> aa;
 Game::Vertex* Game::getVertices(size_t& count) {
-
-  count = level->_verts.size();
-  return &level->_verts[0];
-
+  // count = level->_verts.size();
+  // return &level->_verts[0];
   aa = std::vector<Vertex>(level->_verts.begin(), level->_verts.end());
-  aa.push_back({{level->_spawnpoint.x - 0.5, level->_spawnpoint.y, 0},{0,1,1}});
-  aa.push_back({{level->_spawnpoint.x, level->_spawnpoint.y, 3},{1,0,1}});
-  aa.push_back({{level->_spawnpoint.x + 0.5, level->_spawnpoint.y, 0},{1,1,0}});
+  aa.insert(aa.end(), Avertices.begin(), Avertices.end());
   count = aa.size();
   return aa.data();
-
-  count = level->_verts.size();
-  return &level->_verts[0];
-  // count = Avertices.size();
-  // return Avertices.data();
 }
 std::vector<uint16_t> ai;
 
 glm::uint16_t* Game::getIndices(size_t& count) {
-
-  count = level->_inidces.size();
-  // count = 1*6;
-  return level->_inidces.data();
-
   ai = std::vector<uint16_t>(level->_inidces.begin(), level->_inidces.end());
-  const auto c = level->_verts.size();
-  ai.push_back(c);
-  ai.push_back(c + 1);
-  ai.push_back(c + 2);
+  const auto cnt = level->_verts.size();
+  std::transform(Aindices.begin(), Aindices.end(), std::back_inserter(ai), [cnt](auto& c) { return c + cnt; });
   count = ai.size();
   return ai.data();
-
-  count = level->_inidces.size();
-  // count = 1*6;
-  return level->_inidces.data();
-  // count = Aindices.size();
-  // return Aindices.data();
 }

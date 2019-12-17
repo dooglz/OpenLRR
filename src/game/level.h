@@ -7,6 +7,7 @@
 #include <cmath>
 #include <glm/glm.hpp>
 //#include <iostream>
+#include <map>
 #include <optional>
 
 #include "game_graphics.h"
@@ -20,11 +21,13 @@ const size_t nTiles = levelSize * levelSize;
 const size_t nVerts = nTiles + (2 * levelSize) + 1;
 // const size_t nVertsDim = sqrt(nVerts);
 const size_t indiceCount = nTiles * 2 * 3;
-const bool FLATLEVEL = true;
+const bool FLATLEVEL = false;
 
 struct Tile {
   enum TileType { empty, rock, water, TileTypeCount };
   enum RockTypes { solid, hard, lose, dirt, vein, RockTypesCount };
+  const static std::map<TileType,bool> isFlat ;
+  const static std::map<TileType,std::vector<TileType>> matchesHeight ;
   TileType type;
   uint8_t height;
   std::optional<RockTypes> rockType;
@@ -32,6 +35,7 @@ struct Tile {
   bool inverted = false;
   size_t rockmask = 0;
   Tile() : type{empty}, height{1} {};
+  constexpr static  glm::vec3 voidColour = glm::vec3(0.196f, 0.224f, 0.184f);
   glm::vec3 GetColor(){
     if (isSpawn) {
      return glm::vec3(0,1,0);

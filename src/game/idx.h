@@ -49,20 +49,21 @@ struct idx {
     ul = 128,
   };
 
+
   static size_t orientation(const idx& me, const idx& other);
   size_t orientation(const idx& other) const;
 };
 
-#define dimAt(a, b, s) b + (a * s)
+#define dimAt(a, b, s) a + (b * s)
 #define dimPos(a, s)                                                                                                                                 \
-  a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
+  a == 0 ? idx{0, 0} : idx {  a - (((size_t)floor(a / s)) * s),(size_t) floor(a / s) }
 
 #define TileAt(v,a, b,s) v[dimAt(a, b, s)]
 #define TilePos(a,s) dimPos(a, s)
 
 #define getAsosiatedVerts(a, b)                                                                                                                      \
   {                                                                                                                                                  \
-    {a, b}, {a, b + 1}, {a + 1, b}, { a + 1, b + 1 }                                                                                                 \
+    {a, b}, {a+1, b}, {a, b+1}, { a + 1, b + 1 }                                                                                                 \
   }
 
 #define VertAt(v,a, b) v[dimAt(a, b, (levelSize + 1))]

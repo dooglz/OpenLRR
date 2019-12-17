@@ -8,6 +8,7 @@
 #include "../graphics/vk/vulkan_internals.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <csignal>
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
@@ -56,29 +57,39 @@ void processInput(GLFWwindow* window, double dt) {
   if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
     v.z++;
   }
-  Engine::setCamPos(Engine::getCamPos() + (v * dt));
+  if (length(v)) {
+    Engine::setCamPos(Engine::getCamPos() + (v * dt));
+  }
 
   const double speed = 10.f * dt;
   const double hRotSpeed = 0.05f * speed;
   const double vRotSpeed = 0.035f * speed;
-
+  // I doubt any of these are right but it works good.
   const glm::dvec3 right = normalize(GetRightVector(Engine::getCamRot()));
   const glm::dvec3 forward = normalize(GetForwardVector(Engine::getCamRot()));
+  const glm::dvec3 up = normalize(GetUpVector(Engine::getCamRot()));
   {
     const glm::dvec3 UP = glm::dvec3(0, 0, 1.0);
+    const glm::dvec3 FW = glm::dvec3(1.0, 0, 0);
+    const glm::dvec3 RF = glm::dvec3(0, 1.0, 0);
     // pitch
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-      Engine::setCamRot(glm::normalize(glm::angleAxis(vRotSpeed, right) * Engine::getCamRot()));
+      Engine::setCamRot(glm::normalize(glm::angleAxis(vRotSpeed, FW) * Engine::getCamRot()));
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-      Engine::setCamRot(glm::normalize(glm::angleAxis(-vRotSpeed, right) * Engine::getCamRot()));
+      Engine::setCamRot(glm::normalize(glm::angleAxis(-vRotSpeed, FW) * Engine::getCamRot()));
     }
     // yaw
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-      Engine::setCamRot(glm::normalize(angleAxis(hRotSpeed, UP) * Engine::getCamRot()));
+      Engine::setCamRot(glm::normalize(angleAxis(hRotSpeed, forward) * Engine::getCamRot()));
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-      Engine::setCamRot(glm::normalize(angleAxis(-hRotSpeed, UP) * Engine::getCamRot()));
+      Engine::setCamRot(glm::normalize(angleAxis(-hRotSpeed, forward) * Engine::getCamRot()));
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
+      raise(SIGTRAP);
+      //__builtin_trap();
     }
   }
 }

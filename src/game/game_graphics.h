@@ -10,6 +10,7 @@ namespace Game{
 struct Vertex  {
   glm::vec3 p;
   glm::vec3 c;
+  glm::vec3 n;
 };
 }
 #endif // OPENLRR_GAME_GRAPHICS_H
