@@ -4,7 +4,7 @@
 using namespace Game;
 
 const std::map<Tile::TileType, bool> Tile::isFlat = {{water, true}};
-const std::map<Tile::TileType, std::vector<Tile::TileType>> Tile::matchesHeight = {{rock, {empty, water}}, {empty, {water}}};
+const std::map<Tile::TileType, std::vector<Tile::TileType>> Tile::matchesHeight = {{rock, {water,empty}}, {empty, {water}}};
 bool ShouldBeInverted(size_t sidemask) {
   if (sidemask > 0) {
     if (sidemask == (idx::OrBit::dr) || sidemask == (idx::OrBit::ul) ||                                   // 128
@@ -76,7 +76,7 @@ std::array<size_t, 4> TileVertHeights(const Tile& myTile, const idx& myPos, size
     return {height, height, height, height};
   }
 
-  auto GrabHeight = [&tiles, &height,&myTile](const std::vector<idx>& coords) -> size_t {
+  auto GrabHeight = [&tiles, &height, &myTile](const std::vector<idx>& coords) -> size_t {
     for (auto& c : coords) {
       const auto i = dimAt(c.x, c.y, levelSize);
       if (i < tiles.size()) {
@@ -85,16 +85,18 @@ std::array<size_t, 4> TileVertHeights(const Tile& myTile, const idx& myPos, size
     }
     return height + (myTile.type == Tile::rock ? wallheight : 0);
   };
-  auto GrabHeight2 = [&tiles, &height,&myTile](const std::vector<std::tuple<Tile::TileType, idx>>& coords) -> size_t {
+  auto GrabHeight2 = [&tiles, &height, &myTile](const std::vector<std::tuple<Tile::TileType, idx>>& coords) -> size_t {
     for (auto& c : coords) {
       auto cIdx = std::get<1>(c);
       auto cType = std::get<0>(c);
       const auto i = dimAt(cIdx.x, cIdx.y, levelSize);
       if (i < tiles.size() && (cType == Tile::TileTypeCount || cType == tiles[i].type)) {
-        return tiles[i].height + (tiles[i].type == Tile::rock && myTile.type == Tile::rock ? wallheight : 0);
+       // auto gg = TileVertHeights(tiles[i], cIdx, tiles[i].height, tiles)[3];
+     //   return gg + (tiles[i].type == Tile::rock && myTile.type == Tile::rock ? wallheight : 0);
+        //return tiles[i].height + (tiles[i].type == Tile::rock && myTile.type == Tile::rock ? wallheight : 0);
       }
     }
-    return height+ (myTile.type == Tile::rock ? wallheight : 0);
+    return height + (myTile.type == Tile::rock ? wallheight : 0);
   };
 
   // does this tiletype have matching conditions (e.g empty,rock)
@@ -118,9 +120,9 @@ std::array<size_t, 4> TileVertHeights(const Tile& myTile, const idx& myPos, size
       LookupCoords[3].push_back({type, {myPos.x + 1, myPos.y}});
     }
     LookupCoords[1].push_back({Tile::TileTypeCount, {myPos.x + 1, myPos.y}});
-    LookupCoords[2].push_back({Tile::TileTypeCount, {myPos.x, myPos.y+1}});
+    LookupCoords[2].push_back({Tile::TileTypeCount, {myPos.x, myPos.y + 1}});
     LookupCoords[3].push_back({Tile::TileTypeCount, {myPos.x + 1, myPos.y + 1}});
-    LookupCoords[3].push_back({Tile::TileTypeCount, {myPos.x , myPos.y + 1}});
+    LookupCoords[3].push_back({Tile::TileTypeCount, {myPos.x, myPos.y + 1}});
     LookupCoords[3].push_back({Tile::TileTypeCount, {myPos.x + 1, myPos.y}});
 
     heights[0] = GrabHeight2(LookupCoords[0]);
@@ -138,76 +140,44 @@ std::array<size_t, 4> TileVertHeights(const Tile& myTile, const idx& myPos, size
   }
 }
 
-size_t MatchHeight(const Tile& myTile, const idx& myPos, std::array<Game::Vertex, 4>& myVerts, const std::vector<Game::Tile::TileType>& matchTypes,
-                   const std::array<Tile, levelSize * levelSize>& tiles, size_t height, bool allowShareEdgePull = true,
-                   const std::vector<Game::Tile::TileType>& noPullFrom = {}) {
-
+size_t MatchHeight(const Tile& myTile, const idx& myPos, std::array<Game::Vertex, 4>& myVerts,
+                   const std::array<Tile, levelSize * levelSize>& tiles, size_t height) {
   auto heights = TileVertHeights(myTile, myPos, height, tiles);
   for (int i = 0; i < 4; ++i) {
-    if (allowShareEdgePull) {
       myVerts[i].p.z = heights[i];
-    }
   }
-  return 0;
-
-  for (int i = 0; i < 4; ++i) {
-    if (allowShareEdgePull) {
-      myVerts[i].p.z = heights[i];
-    } else {
-      myVerts[i].p.z = height;
-    }
-  }
-
-  if (matchTypes.empty()) {
-    // this tile don't care bout nobody
-    return 0;
-  }
-
-  const std::vector<idx> surTiles = myPos.getSurTiles(levelSize);
   size_t sidemask = 0;
-  bool touchedEdges[2] = {0, 0};
-
-  for (const auto& type : matchTypes) {
-    for (int j = 0; j < surTiles.size(); ++j) {
-      const idx& surTidx = surTiles[j];
-      const Tile& surT = TileAt(tiles, surTidx.x, surTidx.y, levelSize);
-      if (surT.type == type) {
-        auto direction = myPos.orientation(surTidx);
-        sidemask += direction;
-        //  auto newHeights = TileVertHeights(surTidx, surT.height,tiles, )
-        if (direction == idx::OrBit::u || direction == idx::OrBit::ul || direction == idx::OrBit::l) {
-          myVerts[0].p.z = surT.height;
-          touchedEdges[0] = true;
-        }
-        if (direction == idx::OrBit::u || direction == idx::OrBit::ur || direction == idx::OrBit::r) {
-          myVerts[1].p.z = surT.height;
-        }
-        if (direction == idx::OrBit::d || direction == idx::OrBit::dl || direction == idx::OrBit::l) {
-          myVerts[2].p.z = surT.height;
-        }
-        if (direction == idx::OrBit::d || direction == idx::OrBit::dr || direction == idx::OrBit::r) {
-          myVerts[3].p.z = surT.height;
-          touchedEdges[1] = true;
+  const std::vector<idx> surTiles = myPos.getSurTiles(levelSize);
+  //do we need to invert?
+  auto needsToMatch = Tile::matchesHeight.find(myTile.type);
+  if (needsToMatch != Tile::matchesHeight.end() && !needsToMatch->second.empty()) {
+    for (const auto& type : needsToMatch->second) {
+      for (int j = 0; j < surTiles.size(); ++j) {
+        const idx& surTidx = surTiles[j];
+        const Tile& surT = TileAt(tiles, surTidx.x, surTidx.y, levelSize);
+        if (surT.type == type) {
+          auto direction = myPos.orientation(surTidx);
+          sidemask += direction;
+          /*
+          //  auto newHeights = TileVertHeights(surTidx, surT.height,tiles, )
+          if (direction == idx::OrBit::u || direction == idx::OrBit::ul || direction == idx::OrBit::l) {
+            myVerts[0].p.z = surT.height;
+          }
+          if (direction == idx::OrBit::u || direction == idx::OrBit::ur || direction == idx::OrBit::r) {
+            myVerts[1].p.z = surT.height;
+          }
+          if (direction == idx::OrBit::d || direction == idx::OrBit::dl || direction == idx::OrBit::l) {
+            myVerts[2].p.z = surT.height;
+          }
+          if (direction == idx::OrBit::d || direction == idx::OrBit::dr || direction == idx::OrBit::r) {
+            myVerts[3].p.z = surT.height;
+          }*/
         }
       }
     }
   }
-  return sidemask;
 
-  if (allowShareEdgePull && !touchedEdges[0]) {
-    if (myPos.y > 0) {
-      myVerts[0].p.z = TileAt(tiles, myPos.x, myPos.y - 1, levelSize).height;
-    } else if (myPos.x > 0) {
-      myVerts[0].p.z = TileAt(tiles, myPos.x - 1, myPos.y, levelSize).height;
-    }
-  }
-  if (allowShareEdgePull && !touchedEdges[1]) {
-    if (myPos.y < levelSize) {
-      myVerts[3].p.z = TileAt(tiles, myPos.x, myPos.y + 1, levelSize).height;
-    } else if (myPos.x < levelSize) {
-      myVerts[3].p.z = TileAt(tiles, myPos.x + 1, myPos.y, levelSize).height;
-    }
-  }
+
   return sidemask;
 }
 
@@ -245,7 +215,12 @@ void Level::Triangulate2(std::vector<Vertex>& allVerts, std::vector<uint16_t>& a
       MatchHeight(tp, myVerts, {}, _tiles, t.height,false);
     }
      */
-    t.rockmask = MatchHeight(t, tp, myVerts, {}, _tiles, t.height);
+    t.rockmask = MatchHeight(t, tp, myVerts, _tiles, t.height);
+
+
+    int a = 6;
+    a = 5;
+    a =4;
     t.inverted = ShouldBeInverted(t.rockmask);
     if (t.inverted) {
       myIndices = {0, 3, 2, 0, 1, 3};

@@ -61,7 +61,7 @@ void processInput(GLFWwindow* window, double dt) {
     Engine::setCamPos(Engine::getCamPos() + (v * dt));
   }
 
-  const double speed = 10.f * dt;
+  const double speed = 15.f * dt;
   const double hRotSpeed = 0.05f * speed;
   const double vRotSpeed = 0.035f * speed;
   // I doubt any of these are right but it works good.
