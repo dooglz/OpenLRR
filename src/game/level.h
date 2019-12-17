@@ -34,7 +34,7 @@ struct Tile {
   Tile() : type{empty}, height{1} {};
   glm::vec3 GetColor(){
     if (isSpawn) {
-     glm::vec3(0,1,0);
+     return glm::vec3(0,1,0);
     }
     switch (type) {
     case empty:
