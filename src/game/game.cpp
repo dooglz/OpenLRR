@@ -41,6 +41,9 @@ std::vector<uint16_t> Aindices = {
 std::vector<Game::Vertex> aa;
 Game::Vertex* Game::getVertices(size_t& count) {
 
+  count = level->_verts.size();
+  return &level->_verts[0];
+
   aa = std::vector<Vertex>(level->_verts.begin(), level->_verts.end());
   aa.push_back({{level->_spawnpoint.x - 0.5, level->_spawnpoint.y, 0},{0,1,1}});
   aa.push_back({{level->_spawnpoint.x, level->_spawnpoint.y, 3},{1,0,1}});
@@ -56,6 +59,10 @@ Game::Vertex* Game::getVertices(size_t& count) {
 std::vector<uint16_t> ai;
 
 glm::uint16_t* Game::getIndices(size_t& count) {
+
+  count = level->_inidces.size();
+  // count = 1*6;
+  return level->_inidces.data();
 
   ai = std::vector<uint16_t>(level->_inidces.begin(), level->_inidces.end());
   const auto c = level->_verts.size();

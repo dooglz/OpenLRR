@@ -96,18 +96,20 @@ template <class T> struct VertexDataFormat {
 
 struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 pos;
-  // glm::vec3 color;
+  glm::vec3 color;
   // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
-  Vertex(glm::vec3 p, glm::vec3 c) : pos{p} {};
-  Vertex(const Game::Vertex& v) : pos{v.p} {};
+  Vertex(glm::vec3 p, glm::vec3 c) : pos{p},color{c}{};
+  Vertex(const Game::Vertex& v) : pos{v.p},color{v.c} {};
   static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
   };
-  static const std::array<vk::VertexInputAttributeDescription, 1>* getAttributeDescriptions() {
-    const static std::array<vk::VertexInputAttributeDescription, 1> attributeDescriptions = {
+  static const std::array<vk::VertexInputAttributeDescription, 2>* getAttributeDescriptions() {
+    const static std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = {
         // eR32G32B32A32Sfloat
-        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos))};
+        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos)),
+        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)),
+        };
     return &attributeDescriptions;
   };
 };

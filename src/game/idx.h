@@ -57,8 +57,8 @@ struct idx {
 #define dimPos(a, s)                                                                                                                                 \
   a == 0 ? idx{0, 0} : idx { (size_t) floor(a / s), a - (((size_t)floor(a / s)) * s) }
 
-#define TileAt(v,a, b) v[dimAt(a, b, levelSize)];
-#define TilePos(a) dimPos(a, levelSize);
+#define TileAt(v,a, b,s) v[dimAt(a, b, s)]
+#define TilePos(a,s) dimPos(a, s)
 
 #define getAsosiatedVerts(a, b)                                                                                                                      \
   {                                                                                                                                                  \

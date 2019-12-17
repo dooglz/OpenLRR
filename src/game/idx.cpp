@@ -13,17 +13,17 @@ bool idx::adjacent(const idx& a) const { return (a.x == x && (a.y == y - 1 || a.
 std::vector<Game::idx> idx::getAdjTiles(size_t a, size_t b, size_t s) {
   s = s - 1;
   std::vector<Game::idx> v;
-  if (a < s && b < s) {
-    v.emplace(v.end(), a, b);
+  if (a < s) {
+    v.emplace(v.end(), a+1, b);
   }
-  if (a > 0 && b < s) {
+  if (a > 0) {
     v.emplace(v.end(), a - 1, b);
   }
-  if (b > 0 && a < s) {
+  if (b > 0) {
     v.emplace(v.end(), a, b - 1);
   }
-  if (a > 0 && b > 0) {
-    v.emplace(v.end(), a - 1, b - 1);
+  if (b < s) {
+    v.emplace(v.end(), a, b + 1);
   }
   return v;
 };
