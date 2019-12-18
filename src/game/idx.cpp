@@ -10,11 +10,35 @@ double idx::dist(const idx& a) { return sqrt(((double)a.y - (double)y) + ((doubl
 bool idx::surround(const idx& a) const { return (a.x == x - 1 || a.x == x || a.x == x + 1) && (a.y == y - 1 || a.y == y || a.y == y + 1); }
 bool idx::adjacent(const idx& a) const { return (a.x == x && (a.y == y - 1 || a.y == y + 1)) || (a.y == y && (a.x == x - 1 || a.x == x + 1)); }
 
-std::vector<Game::idx> idx::getAdjTiles(size_t a, size_t b, size_t s) {
+const idx idx::U = {0, -1};
+const idx idx::UL = {-1, -1};
+const idx idx::UR = {1, -1};
+const idx idx::L = {-1, 0};
+const idx idx::R = {1, 0};
+const idx idx::D = {0, 1};
+const idx idx::DL = {-1, 1};
+const idx idx::DR = {1, 1};
+
+std::vector<Game::idx> idx::getTouchingTilesForVert(const idx& p, const unsigned char& vert) {
+  ;
+  switch (vert) {
+  case 0:
+    return {{p + idx::UL}, {p + idx::U}, {p + idx::L}};
+  case 1:
+    return {{p + idx::U}, {p + idx::UR}, {p + idx::R}};
+  case 2:
+    return {{p + idx::L}, {p + idx::DL}, {p + idx::D}};
+  case 3:
+    return {{p + idx::R}, {p + idx::D}, {p + idx::DR}};
+  }
+}
+std::vector<Game::idx> idx::getTouchingTilesForVert(const unsigned char& vert) const { return idx::getTouchingTilesForVert(*this, vert); }
+
+std::vector<Game::idx> idx::getAdjTiles(long long a, long long b, size_t s) {
   s = s - 1;
   std::vector<Game::idx> v;
   if (a < s) {
-    v.emplace(v.end(), a+1, b);
+    v.emplace(v.end(), a + 1, b);
   }
   if (a > 0) {
     v.emplace(v.end(), a - 1, b);
@@ -29,8 +53,8 @@ std::vector<Game::idx> idx::getAdjTiles(size_t a, size_t b, size_t s) {
 };
 std::vector<Game::idx> idx::getAdjTiles(const idx& a, size_t s) { return idx::getAdjTiles(a.x, a.y, s); }
 std::vector<Game::idx> idx::getAdjTiles(size_t s) const { return idx::getAdjTiles(*this, s); }
-
-std::vector<Game::idx> idx::getSurTiles(size_t a, size_t b, size_t s) {
+// note this isn't used for jsut tiles, TODO change name
+std::vector<Game::idx> idx::getSurTiles(long long a, long long b, size_t s) {
   std::vector<idx> adj = getAdjTiles(a, b, s);
   if (a > 0 && b > 0) {
     adj.push_back({a - 1, b - 1});

@@ -88,7 +88,7 @@ void processInput(GLFWwindow* window, double dt) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
-      raise(SIGTRAP);
+     // raise(SIGTRAP);
       //__builtin_trap();
     }
   }

@@ -98,7 +98,13 @@ void VulkanBackend::drawFrame(double dt) {
   // render commands
   size_t ic;
   Game::getIndices(ic);
-
+  static double icc = 0;
+  icc+=(dt*30);
+  if (icc > ic) {
+    icc = 0;
+  }
+  size_t ics = (size_t)floor(icc);
+  ics = ic;
   uint32_t a = WaitForAvilibleImage(ctx->device, swapchain->swapChain, *syncObjects);
   if (a == -1) {
     RebuildSwapChain();
@@ -108,7 +114,8 @@ void VulkanBackend::drawFrame(double dt) {
     }
   }
 
-  cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ic, *descriptorSets,
+  cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ics,
+                     *descriptorSets,
                      a);
 
   uniform->updateUniformBuffer(a, dt, swapchain->swapChainExtent);

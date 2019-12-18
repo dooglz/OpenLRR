@@ -26,8 +26,8 @@ const bool FLATLEVEL = false;
 struct Tile {
   enum TileType { empty, rock, water, TileTypeCount };
   enum RockTypes { solid, hard, lose, dirt, vein, RockTypesCount };
-  const static std::map<TileType,bool> isFlat ;
-  const static std::map<TileType,std::vector<TileType>> matchesHeight ;
+  const static std::map<TileType, bool> isFlat;
+  const static std::map<TileType, std::vector<TileType>> matchesHeight;
   TileType type;
   uint8_t height;
   std::optional<RockTypes> rockType;
@@ -35,10 +35,10 @@ struct Tile {
   bool inverted = false;
   size_t rockmask = 0;
   Tile() : type{empty}, height{1} {};
-  constexpr static  glm::vec3 voidColour = glm::vec3(0.196f, 0.224f, 0.184f);
-  glm::vec3 GetColor(){
+  constexpr static glm::vec3 voidColour = glm::vec3(0.196f, 0.224f, 0.184f);
+  glm::vec3 GetColor() {
     if (isSpawn) {
-     return glm::vec3(0,1,0);
+      return glm::vec3(0, 1, 0);
     }
     switch (type) {
     case empty:
@@ -46,7 +46,7 @@ struct Tile {
     case water:
       return glm::vec3(0.259f, 0.522f, 0.976f);
     case rock:
-      switch (rockType.value()){
+      switch (rockType.value()) {
       case dirt:
         return glm::vec3(0.839f, 80.12f, 0.796f);
       case lose:
@@ -58,10 +58,10 @@ struct Tile {
       case vein:
         return glm::vec3(0.773f, 0.847f, 0.427f);
       default:
-        return glm::vec3(1,1,1);
+        return glm::vec3(1, 1, 1);
       }
     default:
-      return glm::vec3(1,1,1);
+      return glm::vec3(1, 1, 1);
     }
   }
   char tostr() {
@@ -93,8 +93,6 @@ public:
   //
   idx _spawnpoint;
 
-
-
 private:
   // LevelGen.cpp
   bool validateMap(std::array<Tile, levelSize * levelSize>& tiles, idx& SpawnPoint);
@@ -102,7 +100,6 @@ private:
   void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
   void SquashWalls(std::array<Tile, levelSize * levelSize>& tiles);
   std::array<Tile, levelSize * levelSize> Generate();
-  void Triangulate2(std::vector<Vertex>& allVerts,
-                    std::vector<uint16_t>& allIndices);
+  void Triangulate2(std::vector<Vertex>& allVerts, std::vector<uint16_t>& allIndices);
 };
 } // namespace Game
