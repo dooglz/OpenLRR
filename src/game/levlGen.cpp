@@ -30,7 +30,7 @@ void Level::PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks) 
   }
 }
 
-void Triangulate(std::array<Tile, levelSize * levelSize>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
+void Triangulate(std::array<Tile, nTiles>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
 
 bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   for (size_t a = 0; a < setA.size(); a++) {
@@ -50,44 +50,57 @@ bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   return false;
 }
 
-void Level::SquashWalls(std::array<Tile, levelSize * levelSize>& tiles) {
+void Level::SquashWalls(std::array<Tile, nTiles>& tiles) {
   size_t squashcount = 0;
   bool didsquash = true;
+  std::vector<idx> walls;
+  for (size_t i = 0; i < nTiles; i++) {
+    if (tiles[i].type == Tile::rock) {
+      walls.push_back(TilePos(i, levelSize));
+    }
+  }
   while (didsquash) {
     didsquash = false;
-    std::vector<idx> walls;
-    for (size_t i = 0; i < levelSize; ++i) {
-      for (size_t j = 0; j < levelSize; ++j) {
-        Tile& t = tiles[j + (i * levelSize)];
-        if (t.type == Tile::rock) {
-          walls.push_back({i, j});
-        }
-      }
-    }
     for (size_t i = 0; i < walls.size(); ++i) {
       const idx& w = walls[i];
       if (w.x == 0 || w.y == 0 || w.x == levelSize - 1 || w.y == levelSize - 1) {
         continue;
       }
-      size_t adjacent = 0;
+
       std::vector<idx> adjacentWalls;
+      std::vector<idx> surroundingWalls;
       for (size_t j = 0; j < walls.size(); ++j) {
         if (i == j) {
           continue;
         }
-        if (w.adjacent(walls[j])) {
-          adjacentWalls.push_back(walls[j]);
+        if (w.surround(walls[j])) {
+          surroundingWalls.push_back(walls[j]);
+          if (w.adjacent(walls[j])) {
+            adjacentWalls.push_back(walls[j]);
+          }
         }
       }
+
       if (adjacentWalls.size() > 2) {
         continue;
       }
-      if (adjacentWalls.size() == 2 && adjacentWalls[0].surround(adjacentWalls[1])) {
-        continue;
+      // if only 2 adj, there must be 1 surrounding that is adj to both these adj
+      if (adjacentWalls.size() == 2) {
+        bool saveCondition = false;
+        for (const auto& surr : surroundingWalls) {
+          if (surr.adjacent(adjacentWalls[0]) && surr.adjacent(adjacentWalls[1])) {
+            saveCondition = true;
+            break;
+          }
+        }
+        if (saveCondition) {
+          continue;
+        }
       }
+
       didsquash = true;
       squashcount++;
-      Tile& t = tiles[w.y + (w.x * levelSize)];
+      Tile& t = TileAt(tiles, w.x, w.y, levelSize);
       t.type = Tile::empty;
       t.rockType.reset();
       // remove me from walls

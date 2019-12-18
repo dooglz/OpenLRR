@@ -44,6 +44,7 @@ struct idx {
   idx(int a, int b) : x{(long long)a}, y{(long long)b} {};
 
   bool operator==(const idx& a) { return a.x == x && a.y == y; }
+  bool operator!=(const idx& a) { return a.x != x || a.y != y; }
   idx& operator+=(const idx& rhs) {
     this->x += rhs.x;
     this->y += rhs.y;
@@ -51,6 +52,15 @@ struct idx {
   }
   friend idx operator+(idx lhs, const idx& rhs) {
     lhs += rhs;
+    return lhs; // return the result by value (uses move constructor)
+  }
+  idx& operator-=(const idx& rhs) {
+    this->x -= rhs.x;
+    this->y -= rhs.y;
+    return *this; // return the result by reference
+  }
+  friend idx operator-(idx lhs, const idx& rhs) {
+    lhs -= rhs;
     return lhs; // return the result by value (uses move constructor)
   }
 
