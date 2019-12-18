@@ -12,7 +12,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
-
+#include <glm/gtx/rotate_vector.hpp> 
 // size = sizeof(vertices[0]) * vertices.size();
 
 uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties, const vk::PhysicalDevice& pdevice) {
@@ -156,6 +156,19 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
 
   static double lifetime = 0;
   lifetime += dt;
+ double sl = 0.5+(sin(lifetime)*0.5);
+  //glm::rotate((float)lifetime, glm::vec3(1.f, 0, 0));
+
+  glm::quat q1 = glm::angleAxis(-1.0f, glm::vec3(1.0, 1.0f, 0));
+ glm::quat q2 = glm::angleAxis(1.0f, glm::vec3(1.0, 1.0f, 0));
+  glm::quat interpolatedquat = glm::mix(q1, q2, (float)sl);
+  glm::vec3 gg = normalize(interpolatedquat * glm::vec3(0, 0, 1.f));
+
+  //glm::vec3 directionalLight = gg;
+  glm::vec3 directionalLight = gg;
+  //= glm::rotate(glm::vec3(0, 0, 1.f), (float)lifetime, glm::vec3(1.f, 0, 0));
+      
+      //normalize(glm::vec3(0, 0, 1.f));
   glm::dmat4 model = glm::dmat4(1.0);
 
   glm::dquat cq = Engine::getCamRot();
@@ -168,13 +181,11 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
   //auto camera_dir = pos +  glm::rotate(cq, glm::dvec3(1, 0, 0));
   //auto camera_up = glm::rotate(cq, glm::dvec3(0, 0, 1));
   view = glm::mat4_cast(cq) * glm::translate(glm::dmat4(1.0),-pos);
-
-
   glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 1000.0);
   //proj[1][1] *= -1;
   glm::dmat4 mvp = proj * view * model;
   // downgrade to float beacuse gpus don't like numbers
-  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp};
+  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp, directionalLight};
 
   void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(ubo));
   memcpy(data, &ubo, sizeof(ubo));

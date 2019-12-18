@@ -30,8 +30,6 @@ void Level::PrintMap(std::array<Tile, levelSize * levelSize> tiles, bool masks) 
   }
 }
 
-void Triangulate(std::array<Tile, nTiles>& tiles, std::array<glm::vec3, nVerts>& verts, std::array<uint16_t, indiceCount>& inidces);
-
 bool canMerge(const std::vector<idx>& setA, const std::vector<idx>& setB) {
   for (size_t a = 0; a < setA.size(); a++) {
     for (size_t b = 0; b < setB.size(); b++) {

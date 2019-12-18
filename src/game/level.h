@@ -48,7 +48,7 @@ struct Tile {
     case rock:
       switch (rockType.value()) {
       case dirt:
-        return glm::vec3(0.839f, 80.12f, 0.796f);
+        return glm::vec3(0.839f, 0.812f, 0.796f);
       case lose:
         return glm::vec3(0.651f, 0.502f, 0.549f);
       case hard:

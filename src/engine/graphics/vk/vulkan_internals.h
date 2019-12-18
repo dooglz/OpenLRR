@@ -3,11 +3,11 @@
 //
 
 #pragma once
+#include "../../../game/game_graphics.h"
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "../../../game/game_graphics.h"
 
 const bool ENABLE_VSYNC = false;
 // things that exist for whole applicaiton
@@ -99,8 +99,8 @@ struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 color;
   glm::vec3 normal;
   // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
-  Vertex(glm::vec3 p, glm::vec3 c) : pos{p},color{c}{};
-  Vertex(const Game::Vertex& v) : pos{v.p},color{v.c},normal{v.n} {};
+  Vertex(glm::vec3 p, glm::vec3 c) : pos{p}, color{c} {};
+  Vertex(const Game::Vertex& v) : pos{v.p}, color{v.c}, normal{v.n} {};
   static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
@@ -159,6 +159,7 @@ struct UniformBufferObject {
   glm::mat4 view;
   glm::mat4 proj;
   glm::mat4 mvp;
+  glm::vec3 lightDir;
 };
 
 struct Uniform {

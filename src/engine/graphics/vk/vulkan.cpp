@@ -66,7 +66,7 @@ void VulkanBackend::startup() {
   for (int i = 0; i < vc; ++i) {
     convertedVertexes.push_back(vd[i]);
   }
-  //auto ofsetIndices = std::transform(myIndices.begin(), myIndices.end(), std::back_inserter(ConvertedVertexes), [&i](auto& c){return c+(i*6);});
+  // auto ofsetIndices = std::transform(myIndices.begin(), myIndices.end(), std::back_inserter(ConvertedVertexes), [&i](auto& c){return c+(i*6);});
   const auto vertices_size = sizeof(convertedVertexes[0]) * vc;
   const auto indices_size = sizeof(id[0]) * ic;
 
@@ -99,7 +99,7 @@ void VulkanBackend::drawFrame(double dt) {
   size_t ic;
   Game::getIndices(ic);
   static double icc = 0;
-  icc+=(dt*30);
+  icc += (dt * 30);
   if (icc > ic) {
     icc = 0;
   }
@@ -115,8 +115,7 @@ void VulkanBackend::drawFrame(double dt) {
   }
 
   cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ics,
-                     *descriptorSets,
-                     a);
+                     *descriptorSets, a);
 
   uniform->updateUniformBuffer(a, dt, swapchain->swapChainExtent);
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);
