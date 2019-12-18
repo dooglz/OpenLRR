@@ -185,14 +185,16 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
         }
       }
       t.inverted = ShouldBeInverted(t.rockmask);
-      const uint16_t inOf = (i * 4);
-    
+      const uint16_t inOf = ((uint16_t)i * 4);
+
       if (t.inverted) {
-        uint16_t Indices[6] = {0 + inOf, 3 + inOf, 2 + inOf, 0 + inOf, 1 + inOf, 3 + inOf};
+        uint16_t Indices[6] = {static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf),
+                               static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf)};
         memcpy(myIndices, Indices, (6 * sizeof(uint16_t)));
         // myIndices = {0, 3, 2, 0, 1, 3};
       } else {
-        uint16_t Indices[6] = {0 + inOf, 1 + inOf, 2 + inOf, 1 + inOf, 3 + inOf, 2 + inOf};
+        uint16_t Indices[6] = {static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(2 + inOf),
+                               static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf)};
         memcpy(myIndices, Indices, 6 * sizeof(uint16_t));
         //  myIndices = {0, 1, 2, 1, 3, 2};
       }
@@ -215,7 +217,7 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
       }
     }
 
-    { 
+    {
       // calculate Normals
       glm::vec3 n1 = normalize(glm::triangleNormal(allVerts[myIndices[0]].p, allVerts[myIndices[1]].p, allVerts[myIndices[2]].p));
       allVerts[myIndices[0]].n = n1;
@@ -227,21 +229,20 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
       allVerts[myIndices[5]].n = n2;
     }
   }
-  //glm::vec3 a(0,0,0);
-  //glm::vec3 b(1, 0, 0);
-  //glm::vec3 c(0, 1, 0);
-  glm::vec3 a(0,0,1);
+  // glm::vec3 a(0,0,0);
+  // glm::vec3 b(1, 0, 0);
+  // glm::vec3 c(0, 1, 0);
+  glm::vec3 a(0, 0, 1);
   glm::vec3 b(0, 0, 0);
   glm::vec3 c(0, 1, 0);
 
-  glm::vec3 n1 = glm::triangleNormal(a,b,c);
-  //glm::vec3 n2 = glm::triangleNormal(a, c, b);
-  //glm::vec3 n3 = glm::triangleNormal(b, a, c);
+  glm::vec3 n1 = glm::triangleNormal(a, b, c);
+  // glm::vec3 n2 = glm::triangleNormal(a, c, b);
+  // glm::vec3 n3 = glm::triangleNormal(b, a, c);
   glm::vec3 n4 = glm::triangleNormal(b, c, a);
   glm::vec3 n5 = glm::triangleNormal(c, a, b);
 
-  //glm::vec3 n6 = glm::triangleNormal(c, b, a);
-
+  // glm::vec3 n6 = glm::triangleNormal(c, b, a);
 
   for (auto& v : allVerts) {
     v.p.z = v.p.z * 0.25;
