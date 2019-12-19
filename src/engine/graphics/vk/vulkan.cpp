@@ -43,8 +43,9 @@ void RebuildSwapChain() {
 
   uniform = std::make_unique<Uniform>(swapchain->swapChainFramebuffers.size(), ctx->device, ctx->physicalDevice);
   descriptorPool = std::make_unique<DescriptorPool>(ctx->device, swapchain->swapChainImages);
-  descriptorSets = std::make_unique<DescriptorSets>(ctx->device, swapchain->swapChainImages, descriptorSetLayout->descriptorSetLayout,
-                                                    descriptorPool->descriptorPool, uniform->uniformBuffers);
+  descriptorSets =
+      std::make_unique<DescriptorSets>(ctx->device, swapchain->swapChainImages, descriptorSetLayout->descriptorSetLayout,
+                                       descriptorPool->descriptorPool, uniform->uniformBuffers, texture->_imageView, texture->_imageSampler);
   std::cout << "swapchain Built" << std::endl;
 }
 
@@ -52,6 +53,10 @@ void VulkanBackend::startup() {
   ctx = std::make_unique<ContextInfo>();
   cmdPool = std::make_unique<CmdPool>(ctx->deviceKHR, ctx->device);
   descriptorSetLayout = std::make_unique<DescriptorSetLayout>(ctx->device);
+
+  // Textures
+  texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);
+
   RebuildSwapChain();
 
   // Unless the amount of swapchain images changes, don't need to rebuild this when swapchain does.
@@ -75,8 +80,6 @@ void VulkanBackend::startup() {
   vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
   vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
-  // Textures
-  texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);
 
   std::cout << "VK init Done" << std::endl;
 }

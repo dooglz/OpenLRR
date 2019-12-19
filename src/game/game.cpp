@@ -3,6 +3,7 @@
 #include "level.h"
 #include <memory>
 #include <vector>
+#include <algorithm>
 
 std::unique_ptr<Game::Level> level;
 

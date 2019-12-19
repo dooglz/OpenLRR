@@ -202,9 +202,18 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDev
   uboLayoutBinding.pImmutableSamplers = nullptr;
   uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
 
+  // for image sampler
+  vk::DescriptorSetLayoutBinding samplerLayoutBinding;
+  samplerLayoutBinding.binding = 1;
+  samplerLayoutBinding.descriptorCount = 1;
+  samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+  samplerLayoutBinding.pImmutableSamplers = nullptr;
+  samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+
+  std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
   vk::DescriptorSetLayoutCreateInfo layoutInfo;
-  layoutInfo.bindingCount = 1;
-  layoutInfo.pBindings = &uboLayoutBinding;
+  layoutInfo.bindingCount = bindings.size();
+  layoutInfo.pBindings = bindings.data();
 
   descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
 }
@@ -216,9 +225,15 @@ DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::I
   poolSize.type = vk::DescriptorType::eUniformBuffer;
   poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
+  std::array<vk::DescriptorPoolSize, 2> poolSizes = {};
+  poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
+  poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
+  poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+
   vk::DescriptorPoolCreateInfo poolInfo;
-  poolInfo.poolSizeCount = 1;
-  poolInfo.pPoolSizes = &poolSize;
+  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.pPoolSizes = poolSizes.data();
   poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
   descriptorPool = device.createDescriptorPool(poolInfo);
 }
@@ -227,7 +242,8 @@ DescriptorPool::~DescriptorPool() { _logicalDevice.destroyDescriptorPool(descrip
 
 DescriptorSets::DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
                                const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
-                               const std::vector<vk::Buffer>& uniformBuffers)
+                               const std::vector<vk::Buffer>& uniformBuffers, const vk::ImageView& textureImageView,
+                               const vk::Sampler& textureSampler)
     : _logicalDevice(device) {
 
   std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
@@ -239,20 +255,32 @@ DescriptorSets::DescriptorSets(const vk::Device& device, const std::vector<vk::I
   descriptorSets = device.allocateDescriptorSets(allocInfo);
 
   for (size_t i = 0; i < swapChainImages.size(); i++) {
-    vk::DescriptorBufferInfo bufferInfo;
+
+    vk::DescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = uniformBuffers[i];
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof(UniformBufferObject);
 
-    vk::WriteDescriptorSet descriptorWrite;
-    descriptorWrite.dstSet = descriptorSets[i];
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
+    vk::DescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    imageInfo.imageView = textureImageView;
+    imageInfo.sampler = textureSampler;
 
-    device.updateDescriptorSets(descriptorWrite, nullptr);
+    std::array<vk::WriteDescriptorSet, 2> descriptorWrites = {};
+    descriptorWrites[0].dstSet = descriptorSets[i];
+    descriptorWrites[0].dstBinding = 0;
+    descriptorWrites[0].dstArrayElement = 0;
+    descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrites[0].descriptorCount = 1;
+    descriptorWrites[0].pBufferInfo = &bufferInfo;
+    descriptorWrites[1].dstSet = descriptorSets[i];
+    descriptorWrites[1].dstBinding = 1;
+    descriptorWrites[1].dstArrayElement = 0;
+    descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    descriptorWrites[1].descriptorCount = 1;
+    descriptorWrites[1].pImageInfo = &imageInfo;
+
+    device.updateDescriptorSets(descriptorWrites, nullptr);
   }
 }
 
@@ -286,9 +314,40 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
   transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
   copyBufferToImage(_imageBuf, _image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
   transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+  vk::ImageViewCreateInfo createInfo;
+  createInfo.image = _image;
+  createInfo.viewType = vk::ImageViewType::e2D;
+  createInfo.format = vk::Format::eR8G8B8A8Unorm;
+  createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+  createInfo.subresourceRange.baseMipLevel = 0;
+  createInfo.subresourceRange.levelCount = 1;
+  createInfo.subresourceRange.baseArrayLayer = 0;
+  createInfo.subresourceRange.layerCount = 1;
+  _imageView = _logicalDevice.createImageView(createInfo);
+
+  // sampler
+  {
+    vk::SamplerCreateInfo samplerInfo;
+    samplerInfo.magFilter = vk::Filter::eLinear;
+    samplerInfo.minFilter = vk::Filter::eLinear;
+    samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+    samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+    samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = 16;
+    samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = vk::CompareOp::eAlways;
+    samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+    _imageSampler = device.createSampler(samplerInfo);
+  }
 }
 
 TextureImage::~TextureImage() {
+  _logicalDevice.destroySampler(_imageSampler);
+  _logicalDevice.destroyImageView(_imageView);
   _logicalDevice.destroyImage(_image);
   _logicalDevice.freeMemory(_imageMemory);
   _logicalDevice.destroyBuffer(_imageBuf);
@@ -318,6 +377,8 @@ void TextureImage::createImage(const vk::PhysicalDevice& pdevice, uint32_t width
 
   imageMemory = _logicalDevice.allocateMemory(allocInfo);
   _logicalDevice.bindImageMemory(image, imageMemory, 0);
+
+  // _textureImageView = createImageView(_image, VK_FORMAT_R8G8B8A8_UNORM);
 }
 
 void TextureImage::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
@@ -339,7 +400,7 @@ void TextureImage::transitionImageLayout(vk::Image image, vk::Format format, vk:
   vk::PipelineStageFlags destinationStage;
 
   if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-    barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead; // TODO check this
+    barrier.srcAccessMask = (vk::AccessFlagBits)0; // TODO check this
     barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
     sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
     destinationStage = vk::PipelineStageFlagBits::eTransfer;

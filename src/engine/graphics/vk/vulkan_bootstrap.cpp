@@ -468,11 +468,8 @@ std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image>& swapCh
     createInfo.format = swapChainImageFormat;
     createInfo.components.r = vk::ComponentSwizzle::eIdentity;
     createInfo.components.g = vk::ComponentSwizzle::eIdentity;
-    ;
     createInfo.components.b = vk::ComponentSwizzle::eIdentity;
-    ;
     createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-    ;
     createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     createInfo.subresourceRange.baseMipLevel = 0;
     createInfo.subresourceRange.levelCount = 1;

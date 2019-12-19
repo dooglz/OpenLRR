@@ -195,7 +195,8 @@ private:
 struct DescriptorSets {
   std::vector<vk::DescriptorSet> descriptorSets;
   DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages, const vk::DescriptorSetLayout& descriptorSetLayout,
-                 const vk::DescriptorPool& descriptorPool, const std::vector<vk::Buffer>& uniformBuffers);
+                 const vk::DescriptorPool& descriptorPool, const std::vector<vk::Buffer>& uniformBuffers, const vk::ImageView& textureImageView,
+                 const vk::Sampler& textureSampler);
   ~DescriptorSets();
 
 private:
@@ -231,6 +232,8 @@ struct TextureImage {
   TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue);
 
   ~TextureImage();
+  vk::ImageView _imageView;
+  vk::Sampler _imageSampler;
 
 private:
   vk::CommandPool _pool;

@@ -14,16 +14,16 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
 
-flat layout(location = 0) out vec3 fragColor;
+flat layout(location = 0) out float intensity;
+flat layout(location = 1) out vec3 tileColour;
+layout(location = 2) out vec2 fragTexCoord;
 
 void main() {
   gl_Position = ubo.mvp * vec4(inPosition, 1.0);
 
   // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));
   // vec3 lightDir = normalize(vec3(0,0,1.f));
-  float intensity = dot(normalize(inNormal), ubo.lightDir);
-
-  // fragColor = vec3(1.f,inPosition.z,inPosition.z);
-  fragColor = normalize(inNormal);
-  fragColor = inColor * intensity;
+  intensity = dot(normalize(inNormal), ubo.lightDir);
+  tileColour = inColor;
+  fragTexCoord = vec2(inPosition.x, inPosition.y);
 }

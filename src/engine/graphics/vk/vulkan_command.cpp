@@ -102,7 +102,7 @@ OneOffCmdBuffer::OneOffCmdBuffer(const vk::Device& device, const vk::CommandPool
   vk::FenceCreateInfo fenceInfo;
   fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
   _fence = device.createFence(fenceInfo);
-
+  device.resetFences(_fence);
   vk::CommandBufferBeginInfo beginInfo;
   beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
   commandBuffer.begin(beginInfo);
@@ -118,5 +118,5 @@ void OneOffCmdBuffer::submit(vk::Queue& queue) {
 }
 OneOffCmdBuffer::~OneOffCmdBuffer() {
   _logicalDevice.destroyFence(_fence);
-  _logicalDevice.freeCommandBuffers(_pool,commandBuffer);
+  _logicalDevice.freeCommandBuffers(_pool, commandBuffer);
 }
