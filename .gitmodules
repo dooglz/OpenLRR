@@ -7,3 +7,6 @@
 [submodule "deps/fastnoise"]
 	path = deps/fastnoise
 	url = https://github.com/Auburns/FastNoise.git
+[submodule "deps/stb"]
+	path = deps/stb
+	url = https://github.com/nothings/stb.git

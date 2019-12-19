@@ -91,3 +91,32 @@ CmdBuffers::CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, si
   allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
   commandBuffers = device.allocateCommandBuffers(allocInfo);
 }
+
+OneOffCmdBuffer::OneOffCmdBuffer(const vk::Device& device, const vk::CommandPool& pool) : _logicalDevice(device), _pool(pool) {
+  vk::CommandBufferAllocateInfo allocInfo;
+  allocInfo.commandPool = pool;
+  allocInfo.level = vk::CommandBufferLevel::ePrimary;
+  allocInfo.commandBufferCount = 1;
+  commandBuffer = device.allocateCommandBuffers(allocInfo)[0];
+
+  vk::FenceCreateInfo fenceInfo;
+  fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+  _fence = device.createFence(fenceInfo);
+
+  vk::CommandBufferBeginInfo beginInfo;
+  beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+  commandBuffer.begin(beginInfo);
+}
+
+void OneOffCmdBuffer::submit(vk::Queue& queue) {
+  commandBuffer.end();
+  vk::SubmitInfo submitInfo;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &commandBuffer;
+  queue.submit(1, &submitInfo, _fence);
+  _logicalDevice.waitForFences(1, &_fence, VK_TRUE, UINT64_MAX);
+}
+OneOffCmdBuffer::~OneOffCmdBuffer() {
+  _logicalDevice.destroyFence(_fence);
+  _logicalDevice.freeCommandBuffers(_pool,commandBuffer);
+}

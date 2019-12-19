@@ -11,8 +11,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include <glm/gtx/rotate_vector.hpp>
+#include <stb_image.h>
 #include <vulkan/vulkan.hpp>
-#include <glm/gtx/rotate_vector.hpp> 
 // size = sizeof(vertices[0]) * vertices.size();
 
 uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties, const vk::PhysicalDevice& pdevice) {
@@ -156,19 +158,19 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
 
   static double lifetime = 0;
   lifetime += dt;
- double sl = 0.5+(sin(lifetime)*0.5);
-  //glm::rotate((float)lifetime, glm::vec3(1.f, 0, 0));
+  double sl = 0.5 + (sin(lifetime) * 0.5);
+  // glm::rotate((float)lifetime, glm::vec3(1.f, 0, 0));
 
   glm::quat q1 = glm::angleAxis(-1.0f, glm::vec3(1.0, 1.0f, 0));
- glm::quat q2 = glm::angleAxis(1.0f, glm::vec3(1.0, 1.0f, 0));
+  glm::quat q2 = glm::angleAxis(1.0f, glm::vec3(1.0, 1.0f, 0));
   glm::quat interpolatedquat = glm::mix(q1, q2, (float)sl);
   glm::vec3 gg = normalize(interpolatedquat * glm::vec3(0, 0, 1.f));
 
-  //glm::vec3 directionalLight = gg;
+  // glm::vec3 directionalLight = gg;
   glm::vec3 directionalLight = gg;
   //= glm::rotate(glm::vec3(0, 0, 1.f), (float)lifetime, glm::vec3(1.f, 0, 0));
-      
-      //normalize(glm::vec3(0, 0, 1.f));
+
+  // normalize(glm::vec3(0, 0, 1.f));
   glm::dmat4 model = glm::dmat4(1.0);
 
   glm::dquat cq = Engine::getCamRot();
@@ -178,11 +180,11 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
 
   glm::dmat4 view = glm::lookAt(pos, pos + forwards, up);
 
-  //auto camera_dir = pos +  glm::rotate(cq, glm::dvec3(1, 0, 0));
-  //auto camera_up = glm::rotate(cq, glm::dvec3(0, 0, 1));
-  view = glm::mat4_cast(cq) * glm::translate(glm::dmat4(1.0),-pos);
+  // auto camera_dir = pos +  glm::rotate(cq, glm::dvec3(1, 0, 0));
+  // auto camera_up = glm::rotate(cq, glm::dvec3(0, 0, 1));
+  view = glm::mat4_cast(cq) * glm::translate(glm::dmat4(1.0), -pos);
   glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 1000.0);
-  //proj[1][1] *= -1;
+  // proj[1][1] *= -1;
   glm::dmat4 mvp = proj * view * model;
   // downgrade to float beacuse gpus don't like numbers
   const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp, directionalLight};
@@ -255,3 +257,119 @@ DescriptorSets::DescriptorSets(const vk::Device& device, const std::vector<vk::I
 }
 
 DescriptorSets::~DescriptorSets() {}
+
+TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue)
+    : _logicalDevice(device), _physicalDevice(pdevice), _pool(pool), _queue(queue) {
+  int texWidth, texHeight, texChannels;
+  stbi_uc* pixels = stbi_load("res/gravel09_col_sm.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+  if (!pixels) {
+    throw std::runtime_error("failed to load texture image!");
+  }
+
+  _imageBuf = createBuffer(_logicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
+  _imageMemory =
+      AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostVisible, _imageBuf);
+
+  void* data;
+  vkMapMemory(device, _imageMemory, 0, imageSize, 0, &data);
+  memcpy(data, pixels, static_cast<size_t>(imageSize));
+  vkUnmapMemory(device, _imageMemory);
+
+  stbi_image_free(pixels);
+
+  createImage(pdevice, texWidth, texHeight, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal,
+              vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, _image,
+              _imageMemory);
+
+  transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+  copyBufferToImage(_imageBuf, _image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+  transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+}
+
+TextureImage::~TextureImage() {
+  _logicalDevice.destroyImage(_image);
+  _logicalDevice.freeMemory(_imageMemory);
+  _logicalDevice.destroyBuffer(_imageBuf);
+}
+
+void TextureImage::createImage(const vk::PhysicalDevice& pdevice, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
+                               vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, vk::DeviceMemory& imageMemory) {
+  vk::ImageCreateInfo imageInfo;
+  imageInfo.imageType = vk::ImageType::e2D;
+  imageInfo.extent.width = width;
+  imageInfo.extent.height = height;
+  imageInfo.extent.depth = 1;
+  imageInfo.mipLevels = 1;
+  imageInfo.arrayLayers = 1;
+  imageInfo.format = format;
+  imageInfo.tiling = tiling;
+  imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+  imageInfo.usage = usage;
+  imageInfo.samples = vk::SampleCountFlagBits::e1; // todo chekc this
+  imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+  image = _logicalDevice.createImage(imageInfo);
+  vk::MemoryRequirements memRequirements = _logicalDevice.getImageMemoryRequirements(image);
+  vk::MemoryAllocateInfo allocInfo;
+  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties, pdevice);
+
+  imageMemory = _logicalDevice.allocateMemory(allocInfo);
+  _logicalDevice.bindImageMemory(image, imageMemory, 0);
+}
+
+void TextureImage::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+  OneOffCmdBuffer commandBuffer(_logicalDevice, _pool);
+
+  vk::ImageMemoryBarrier barrier;
+  barrier.oldLayout = oldLayout;
+  barrier.newLayout = newLayout;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = image;
+  barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+  barrier.subresourceRange.baseMipLevel = 0;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.baseArrayLayer = 0;
+  barrier.subresourceRange.layerCount = 1;
+
+  vk::PipelineStageFlags sourceStage;
+  vk::PipelineStageFlags destinationStage;
+
+  if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+    barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead; // TODO check this
+    barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+    sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    destinationStage = vk::PipelineStageFlagBits::eTransfer;
+  } else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+    barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    sourceStage = vk::PipelineStageFlagBits::eTransfer;
+    destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+  } else {
+    throw std::invalid_argument("unsupported layout transition!");
+  }
+
+  commandBuffer.commandBuffer.pipelineBarrier(sourceStage, destinationStage, vk::DependencyFlagBits(), nullptr, nullptr, barrier);
+  commandBuffer.submit(_queue);
+}
+void TextureImage::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height) {
+  OneOffCmdBuffer commandBuffer(_logicalDevice, _pool);
+
+  vk::BufferImageCopy region = {};
+  region.bufferOffset = 0;
+  region.bufferRowLength = 0;
+  region.bufferImageHeight = 0;
+  region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+  ;
+  region.imageSubresource.mipLevel = 0;
+  region.imageSubresource.baseArrayLayer = 0;
+  region.imageSubresource.layerCount = 1;
+  region.imageOffset = {0, 0, 0};
+  region.imageExtent = {width, height, 1};
+
+  commandBuffer.commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
+  commandBuffer.submit(_queue);
+}

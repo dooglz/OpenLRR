@@ -25,6 +25,8 @@ std::unique_ptr<DescriptorPool> descriptorPool;
 std::unique_ptr<DescriptorSets> descriptorSets;
 //
 std::unique_ptr<Uniform> uniform;
+//
+std::unique_ptr<TextureImage> texture;
 
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
@@ -73,6 +75,8 @@ void VulkanBackend::startup() {
   vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
   vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  // Textures
+  texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);
 
   std::cout << "VK init Done" << std::endl;
 }
@@ -87,6 +91,7 @@ void VulkanBackend::shutdown() {
   renderPass.reset();
   swapchain.reset();
 
+  texture.reset();
   vbuffer.reset();
   cmdPool.reset();
   descriptorSetLayout.reset();

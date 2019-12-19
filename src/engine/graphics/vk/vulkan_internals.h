@@ -214,3 +214,36 @@ private:
   void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,
                       const vk::DescriptorSet& descriptorSet);
 };
+struct OneOffCmdBuffer {
+  OneOffCmdBuffer() = delete;
+  vk::CommandBuffer commandBuffer;
+  OneOffCmdBuffer(const vk::Device& device, const vk::CommandPool& pool);
+  void submit(vk::Queue& queue);
+  ~OneOffCmdBuffer();
+
+private:
+  const vk::Device& _logicalDevice;
+  vk::Fence _fence;
+  vk::CommandPool _pool;
+};
+
+struct TextureImage {
+  TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue);
+
+  ~TextureImage();
+
+private:
+  vk::CommandPool _pool;
+  const vk::Device& _logicalDevice;
+  const vk::PhysicalDevice& _physicalDevice;
+  vk::Queue& _queue;
+
+  vk::Buffer _imageBuf;
+  vk::DeviceMemory _imageMemory;
+  vk::Image _image;
+
+  void createImage(const vk::PhysicalDevice& pdevice, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
+                   vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, vk::DeviceMemory& imageMemory);
+  void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+  void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+};

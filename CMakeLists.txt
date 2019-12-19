@@ -44,8 +44,10 @@ add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
 add_library(fastNoise ${CMAKE_CURRENT_SOURCE_DIR}/deps/fastnoise/FastNoise.cpp ${CMAKE_CURRENT_SOURCE_DIR}/deps/fastnoise/FastNoise.h)
 target_include_directories(fastNoise SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/fastnoise)
 target_compile_features(fastNoise PUBLIC cxx_std_17)
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE  ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb)
 
-target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise)
+target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise stb)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 
@@ -72,7 +74,18 @@ add_custom_target(CompileShaders ALL
 	COMMAND_EXPAND_LISTS
 		SOURCES ${shaderfiles}
 )
-add_dependencies(OpenLRR CompileShaders)
 
 
 
+
+if(APPLE)
+  add_custom_target(copy_resources ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/res" ${CMAKE_BINARY_DIR}/res
+  )
+else()
+  add_custom_target(copy_resources ALL 
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/res" ${CMAKE_BINARY_DIR}/$<CONFIGURATION>/res
+  )
+endif()
+
+add_dependencies(OpenLRR CompileShaders copy_resources)
