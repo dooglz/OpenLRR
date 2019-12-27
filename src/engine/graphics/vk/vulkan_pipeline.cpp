@@ -96,7 +96,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   // rasterizer.polygonMode = vk::PolygonMode::eLine;
   rasterizer.lineWidth = 2.0f;
   rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-  rasterizer.cullMode = vk::CullModeFlagBits::eNone;
+  //rasterizer.cullMode = vk::CullModeFlagBits::eNone;
   rasterizer.frontFace = vk::FrontFace::eClockwise;
   rasterizer.depthBiasEnable = VK_FALSE;
 

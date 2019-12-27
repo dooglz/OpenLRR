@@ -64,15 +64,42 @@ void VulkanBackend::startup() {
   cmdBuffers = std::make_unique<CmdBuffers>(ctx->device, cmdPool->commandPool, swapchain->swapChainFramebuffers.size());
 
   // data
-
   size_t vc, ic;
   Game::Vertex* vd = Game::getVertices(vc);
   glm::uint16_t* id = Game::getIndices(ic);
 
   std::vector<Vertex> convertedVertexes;
+
   for (int i = 0; i < vc; ++i) {
-    convertedVertexes.push_back(vd[i]);
+    Vertex v = Vertex(vd[i]);
+    convertedVertexes.push_back(v);
   }
+
+  size_t barrychuckle = 0;
+  for (int j = 0; j < ic; ++j) {
+    switch (barrychuckle % 6) {
+    case 0:
+      convertedVertexes[id[j]].barry = glm::vec3(1, 0, 0);
+      break;
+    case 1:
+      convertedVertexes[id[j]].barry = glm::vec3(0, 1, 0);
+      break;
+    case 2:
+      convertedVertexes[id[j]].barry = glm::vec3(0, 0, 1);
+      break;
+    case 4:
+      convertedVertexes[id[j]].barry = glm::vec3(1, 0, 0);
+      break;
+    case 5:
+      convertedVertexes[id[j]].barry = glm::vec3(0, 1, 0);
+      break;
+    case 3:
+      convertedVertexes[id[j]].barry = glm::vec3(0, 0, 1);
+      break;
+    }
+    barrychuckle++;
+  }
+
   // auto ofsetIndices = std::transform(myIndices.begin(), myIndices.end(), std::back_inserter(ConvertedVertexes), [&i](auto& c){return c+(i*6);});
   const auto vertices_size = sizeof(convertedVertexes[0]) * vc;
   const auto indices_size = sizeof(id[0]) * ic;

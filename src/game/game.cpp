@@ -61,7 +61,6 @@ Game::Vertex* Game::getVertices(size_t& count) {
 std::vector<uint16_t> ai;
 
 glm::uint16_t* Game::getIndices(size_t& count) {
-
   ai = std::vector<uint16_t>(level->_inidces.begin(), level->_inidces.end());
   const auto cnt = level->_verts.size();
   std::transform(Aindices.begin(), Aindices.end(), std::back_inserter(ai), [cnt](auto& c) { return c + cnt; });

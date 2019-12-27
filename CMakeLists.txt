@@ -75,12 +75,9 @@ add_custom_target(CompileShaders ALL
 		SOURCES ${shaderfiles}
 )
 
-
-
-
 if(APPLE)
   add_custom_target(copy_resources ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/res" ${CMAKE_BINARY_DIR}/res
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/res" ${CMAKE_BINARY_DIR}/$<CONFIGURATION>/res
   )
 else()
   add_custom_target(copy_resources ALL 

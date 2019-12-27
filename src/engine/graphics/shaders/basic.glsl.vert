@@ -13,17 +13,21 @@ ubo;
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
+layout(location = 3) in vec3 inBarry;
 
 flat layout(location = 0) out float intensity;
 flat layout(location = 1) out vec3 tileColour;
 layout(location = 2) out vec2 fragTexCoord;
+layout(location = 3) out vec3 outBarry;
 
 void main() {
   gl_Position = ubo.mvp * vec4(inPosition, 1.0);
-
+    outBarry = inBarry;
   // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));
   // vec3 lightDir = normalize(vec3(0,0,1.f));
   intensity = dot(normalize(inNormal), ubo.lightDir);
   tileColour = inColor;
+  //tileColour = inNormal;
+  intensity = 1.0;
   fragTexCoord = vec2(inPosition.x, inPosition.y);
 }
