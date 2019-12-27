@@ -222,17 +222,34 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
         }
       }
     }
+    // normal        inverted
+    // 0 -- 1        0 -- 1
+    // | / |         |  \ |
+    // 2 -- 3        2 -- 3
 
     {
+      Vertex* myVerts = &allVerts[i * 4];
+
+      if (t.inverted) {
+        myVerts[1].n = normalize(glm::triangleNormal(myVerts[2].p, myVerts[0].p, myVerts[1].p));
+        myVerts[2].n = normalize(glm::triangleNormal(myVerts[1].p, myVerts[3].p, myVerts[2].p));
+      }else {
+        myVerts[0].n = normalize(glm::triangleNormal(myVerts[2].p, myVerts[0].p, myVerts[1].p));
+
+        // myVerts[1].n = normalize(glm::triangleNormal(myVerts[0].p, myVerts[1].p, myVerts[2].p));
+        // myVerts[2].n = normalize(glm::triangleNormal(myVerts[3].p, myVerts[2].p, myVerts[1].p));
+
+        myVerts[3].n = normalize(glm::triangleNormal(myVerts[1].p, myVerts[3].p, myVerts[2].p));
+      }
       // calculate Normals
-      glm::vec3 n1 = normalize(glm::triangleNormal(allVerts[myIndices[0]].p, allVerts[myIndices[1]].p, allVerts[myIndices[2]].p));
-      allVerts[myIndices[0]].n = n1;
-      allVerts[myIndices[1]].n = n1;
-      allVerts[myIndices[2]].n = n1;
-      glm::vec3 n2 = normalize(glm::triangleNormal(allVerts[myIndices[3]].p, allVerts[myIndices[4]].p, allVerts[myIndices[5]].p));
-      allVerts[myIndices[3]].n = n2;
-      allVerts[myIndices[4]].n = n2;
-      allVerts[myIndices[5]].n = n2;
+      //glm::vec3 n1 = normalize(glm::triangleNormal(allVerts[myIndices[0]].p, allVerts[myIndices[1]].p, allVerts[myIndices[2]].p));
+      //allVerts[myIndices[0]].n = n1;
+      //allVerts[myIndices[1]].n = n1;
+      //allVerts[myIndices[2]].n = n1;
+      //glm::vec3 n2 = normalize(glm::triangleNormal(allVerts[myIndices[3]].p, allVerts[myIndices[4]].p, allVerts[myIndices[5]].p));
+      //allVerts[myIndices[3]].n = n2;
+      //allVerts[myIndices[4]].n = n2;
+      //allVerts[myIndices[5]].n = n2;
     }
   }
   // glm::vec3 a(0,0,0);

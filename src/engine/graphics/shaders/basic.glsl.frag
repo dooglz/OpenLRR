@@ -7,7 +7,6 @@ flat layout(location = 1) in vec3 tileColour;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 barry;
 layout(binding = 1) uniform sampler2D texSampler;
-
 layout(location = 0) out vec4 outColor;
 
 
@@ -20,8 +19,9 @@ vec3 d = fwidth(barry);
 
 void main() {
   // vec2 fragTexCoord = vec2(0.1,0.1);
-  outColor = vec4(tileColour, 1.0);
+  //outColor = vec4(tileColour, 1.0);
   outColor = mix(texture(texSampler, fragTexCoord), vec4(tileColour, 1.0f), 0.5f) * intensity;
+ // outColor = vec4(tileColour,1.0);
   outColor = mix( vec4(0,0.0,0.0,1.0),outColor, edgeFactor());
    //outColor =  mix( vec4(0,1.0,1.0,1.0),vec4(barry,1), edgeFactor());
 

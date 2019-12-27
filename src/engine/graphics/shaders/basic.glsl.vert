@@ -26,8 +26,22 @@ void main() {
   // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));
   // vec3 lightDir = normalize(vec3(0,0,1.f));
   intensity = dot(normalize(inNormal), ubo.lightDir);
-  tileColour = inColor;
-  //tileColour = inNormal;
+/*
+  int tri = gl_VertexIndex % 3;
+   switch(tri){
+   case 0:
+    tileColour = vec3(1,0,0);
+    break;
+   case 1:
+   tileColour = vec3(0,1,0);
+    break;
+   case 2:
+   tileColour = vec3(0,0,1);
+    break;
+
+   }*/
+  //tileColour = inColor;
+  tileColour = inNormal;
   intensity = 1.0;
   fragTexCoord = vec2(inPosition.x, inPosition.y);
 }

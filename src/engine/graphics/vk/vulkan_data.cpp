@@ -168,7 +168,7 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
 
   // glm::vec3 directionalLight = gg;
   glm::vec3 directionalLight = gg;
-  directionalLight = glm::vec3(1.0, 1.0f, 0);
+ // directionalLight = glm::vec3(1.0, 1.0f, 0);
   //= glm::rotate(glm::vec3(0, 0, 1.f), (float)lifetime, glm::vec3(1.f, 0, 0));
 
   // normalize(glm::vec3(0, 0, 1.f));
