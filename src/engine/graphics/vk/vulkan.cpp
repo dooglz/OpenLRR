@@ -78,13 +78,13 @@ void VulkanBackend::startup() {
   size_t barrychuckle = 0;
   for (int j = 0; j < ic; ++j) {
     switch (barrychuckle % 6) {
-    case 0:
+    case 2:
       convertedVertexes[id[j]].barry = glm::vec3(1, 0, 0);
       break;
     case 1:
       convertedVertexes[id[j]].barry = glm::vec3(0, 1, 0);
       break;
-    case 2:
+    case 0:
       convertedVertexes[id[j]].barry = glm::vec3(0, 0, 1);
       break;
     case 4:

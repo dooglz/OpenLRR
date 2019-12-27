@@ -194,13 +194,13 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
       // 2 -- 3        2 -- 3
 
       if (t.inverted) {
-        uint16_t Indices[6] = {static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf), static_cast<uint16_t>(0 + inOf),
-                               static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(1 + inOf)};
+        uint16_t Indices[6] = {static_cast<uint16_t>(2 + inOf), static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(3 + inOf),
+                               static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(0 + inOf)};
         memcpy(myIndices, Indices, (6 * sizeof(uint16_t)));
         // myIndices = {0, 3, 2, 0, 1, 3};
       } else {
         uint16_t Indices[6] = {static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(2 + inOf),
-                               static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf)};
+                               static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf), static_cast<uint16_t>(1 + inOf)};
         memcpy(myIndices, Indices, 6 * sizeof(uint16_t));
         //  myIndices = {0, 1, 2, 1, 3, 2};
       }
@@ -231,8 +231,8 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
       Vertex* myVerts = &allVerts[i * 4];
 
       if (t.inverted) {
-        myVerts[1].n = normalize(glm::triangleNormal(myVerts[2].p, myVerts[0].p, myVerts[1].p));
-        myVerts[2].n = normalize(glm::triangleNormal(myVerts[1].p, myVerts[3].p, myVerts[2].p));
+        myVerts[1].n = normalize(glm::triangleNormal(myVerts[0].p, myVerts[1].p, myVerts[3].p));
+        myVerts[2].n = normalize(glm::triangleNormal(myVerts[3].p, myVerts[2].p, myVerts[0].p));
       }else {
         myVerts[0].n = normalize(glm::triangleNormal(myVerts[2].p, myVerts[0].p, myVerts[1].p));
 

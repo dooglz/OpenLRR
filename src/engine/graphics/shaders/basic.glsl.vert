@@ -16,7 +16,7 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec3 inBarry;
 
 flat layout(location = 0) out float intensity;
-flat layout(location = 1) out vec3 tileColour;
+layout(location = 1) out vec3 tileColour;
 layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 outBarry;
 
@@ -40,8 +40,8 @@ void main() {
     break;
 
    }*/
-  //tileColour = inColor;
-  tileColour = inNormal;
-  intensity = 1.0;
+  tileColour = inColor;
+//  tileColour = inNormal;
+  //intensity = 1.0;
   fragTexCoord = vec2(inPosition.x, inPosition.y);
 }
