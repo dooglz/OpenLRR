@@ -7,6 +7,11 @@
 
 #include "../graphics_backend.h"
 
+//todo: refactor this out:
+#include "vulkan_internals.h"
+
+#include <memory>
+
 class VulkanBackend : public GraphicsBackend {
 public:
   void startup() override;
@@ -15,4 +20,13 @@ public:
   void resize() override;
 };
 
+
+struct vkRenderableItem : public RenderableItem{
+  vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, PIPELINE p );
+  void updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) override;
+  ~vkRenderableItem() override;
+  //
+
+  std::unique_ptr<VertexBuffer> _vbuffer;
+};
 #endif // OPENLRR_VULKAN_H

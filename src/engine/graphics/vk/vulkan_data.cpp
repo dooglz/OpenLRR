@@ -188,7 +188,7 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Ex
   // proj[1][1] *= -1;
   glm::dmat4 mvp = proj * view * model;
   // downgrade to float beacuse gpus don't like numbers
-  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp, directionalLight};
+  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp, directionalLight,Engine::getLightPos()};
 
   void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(ubo));
   memcpy(data, &ubo, sizeof(ubo));
@@ -201,7 +201,7 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDev
   uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
   uboLayoutBinding.descriptorCount = 1;
   uboLayoutBinding.pImmutableSamplers = nullptr;
-  uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+  uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex |  vk::ShaderStageFlagBits::eFragment;
 
   // for image sampler
   vk::DescriptorSetLayoutBinding samplerLayoutBinding;

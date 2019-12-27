@@ -17,6 +17,9 @@ void Shutdown();
 glm::dvec3 getCamPos();
 void setCamPos(const glm::dvec3& p);
 
+glm::dvec3 getLightPos();
+void setLightPos(const glm::dvec3& p);
+
 glm::dquat getCamRot();
 void setCamRot(const glm::dquat& p);
 

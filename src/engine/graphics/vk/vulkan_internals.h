@@ -163,6 +163,7 @@ struct UniformBufferObject {
   glm::mat4 proj;
   glm::mat4 mvp;
   glm::vec3 lightDir;
+  glm::vec3 pointLight;
 };
 
 struct Uniform {

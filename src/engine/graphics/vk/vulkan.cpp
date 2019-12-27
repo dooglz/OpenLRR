@@ -19,7 +19,7 @@ std::unique_ptr<CmdPool> cmdPool;
 std::unique_ptr<CmdBuffers> cmdBuffers;
 std::unique_ptr<SyncObjects> syncObjects;
 //
-std::unique_ptr<VertexBuffer> vbuffer;
+//std::unique_ptr<VertexBuffer> vbuffer;
 std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
 std::unique_ptr<DescriptorPool> descriptorPool;
 std::unique_ptr<DescriptorSets> descriptorSets;
@@ -27,7 +27,8 @@ std::unique_ptr<DescriptorSets> descriptorSets;
 std::unique_ptr<Uniform> uniform;
 //
 std::unique_ptr<TextureImage> texture;
-
+//
+std::vector<vkRenderableItem*> totalRIs;
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
   pipeline.reset();
@@ -63,6 +64,7 @@ void VulkanBackend::startup() {
   syncObjects = std::make_unique<SyncObjects>(ctx->device, swapchain->swapChainImages.size());
   cmdBuffers = std::make_unique<CmdBuffers>(ctx->device, cmdPool->commandPool, swapchain->swapChainFramebuffers.size());
 
+  /*
   // data
   size_t vc, ic;
   Game::Vertex* vd = Game::getVertices(vc);
@@ -99,15 +101,13 @@ void VulkanBackend::startup() {
     }
     barrychuckle++;
   }
-
-  // auto ofsetIndices = std::transform(myIndices.begin(), myIndices.end(), std::back_inserter(ConvertedVertexes), [&i](auto& c){return c+(i*6);});
   const auto vertices_size = sizeof(convertedVertexes[0]) * vc;
   const auto indices_size = sizeof(id[0]) * ic;
 
-  vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
-  vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
-  vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
-
+  //vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
+  //vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  //vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
+*/
   std::cout << "VK init Done" << std::endl;
 }
 
@@ -122,7 +122,7 @@ void VulkanBackend::shutdown() {
   swapchain.reset();
 
   texture.reset();
-  vbuffer.reset();
+//  vbuffer.reset();
   cmdPool.reset();
   descriptorSetLayout.reset();
 
@@ -149,8 +149,12 @@ void VulkanBackend::drawFrame(double dt) {
     }
   }
 
-  cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *vbuffer, ics,
-                     *descriptorSets, a);
+  for (int i = 0; i < totalRIs.size(); ++i) {
+     const vkRenderableItem& ri = *totalRIs[i];
+    cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *ri._vbuffer, ri._icount,
+                       *descriptorSets, a);
+  }
+
 
   uniform->updateUniformBuffer(a, dt, swapchain->swapChainExtent);
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);
@@ -160,4 +164,53 @@ void VulkanBackend::resize() {
   // need to recreate framebuffers
   //	vkDeviceWaitIdle(vkinfo->device);
   std::cout << "VK recreate" << std::endl;
+}
+
+
+vkRenderableItem::~vkRenderableItem() {}
+void vkRenderableItem::updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) {
+
+}
+
+vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, RenderableItem::PIPELINE p)
+    : RenderableItem(vertices, vcount, indices, icount, p) {
+  totalRIs.push_back(this);
+
+  std::vector<Vertex> convertedVertexes;
+  size_t barrychuckle = 0;
+
+  for (int j = 0; j < _vcount; ++j) {
+    convertedVertexes.push_back(vertices[j]);
+  }
+
+  for (int j = 0; j < _icount; ++j) {
+    switch (barrychuckle % 6) {
+    case 2:
+      convertedVertexes[indices[j]].barry = glm::vec3(1, 0, 0);
+      break;
+    case 1:
+      convertedVertexes[indices[j]].barry = glm::vec3(0, 1, 0);
+      break;
+    case 0:
+      convertedVertexes[indices[j]].barry = glm::vec3(0, 0, 1);
+      break;
+    case 4:
+      convertedVertexes[indices[j]].barry = glm::vec3(1, 0, 0);
+      break;
+    case 5:
+      convertedVertexes[indices[j]].barry = glm::vec3(0, 1, 0);
+      break;
+    case 3:
+      convertedVertexes[indices[j]].barry = glm::vec3(0, 0, 1);
+      break;
+    }
+    barrychuckle++;
+  }
+  const auto vertices_size = sizeof(convertedVertexes[0]) * _vcount;
+  const auto indices_size = sizeof(indices[0]) * _icount;
+  _vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
+  _vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
+  _vbuffer->UploadIndex(indices, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
+
+
 }

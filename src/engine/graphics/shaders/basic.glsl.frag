@@ -1,11 +1,27 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_OES_standard_derivatives : enable
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(binding = 0) uniform UniformBufferObject {
+  mat4 model;
+  mat4 view;
+  mat4 proj;
+  mat4 mvp;
+ vec3 lightDir;
+  vec3 pointLight;
+}
+ubo;
+
 
 flat layout(location = 0) in float intensity;
- layout(location = 1) in vec3 tileColour;
+layout(location = 1) in vec3 tileColour;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 barry;
+layout(location = 4) in vec3 fragVert;
+flat layout(location = 5) in vec3 normal;
+
+
 layout(binding = 1) uniform sampler2D texSampler;
 layout(location = 0) out vec4 outColor;
 
@@ -19,12 +35,19 @@ vec3 d = fwidth(barry);
 }
 
 void main() {
-  // vec2 fragTexCoord = vec2(0.1,0.1);
-  //outColor = vec4(tileColour, 1.0);
-  outColor = mix(texture(texSampler, fragTexCoord), vec4(tileColour, 1.0f), 0.5f) * intensity;
- // outColor = vec4(tileColour,1.0);
-  outColor = mix( vec4(0,0.0,0.0,1.0),outColor, edgeFactor());
-   //outColor =  mix( vec4(0,1.0,1.0,1.0),vec4(barry,1), edgeFactor());
+    vec3 fragPosition = fragVert;
+    //calculate the vector from this pixels surface to the light source
+    vec3 surfaceToLight = ubo.pointLight - fragPosition;
+    //calculate the cosine of the angle of incidence
+    float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
+    brightness = clamp(brightness, 0, 1);
 
-  //outColor = vec4(1.0,1.0,1.0, 1.0);
+    // vec2 fragTexCoord = vec2(0.1,0.1);
+    //outColor = vec4(tileColour, 1.0);
+    outColor = mix(texture(texSampler, fragTexCoord), vec4(tileColour, 1.0f), 0.5f) * brightness;
+    // outColor = vec4(tileColour,1.0);
+    outColor = mix( vec4(0,0.0,0.0,1.0),outColor, edgeFactor());
+    //outColor =  mix( vec4(0,1.0,1.0,1.0),vec4(barry,1), edgeFactor());
+    //outColor = vec4(ubo.pointLight, 1.0);
+    //outColor = vec4(1.0,1.0,1.0, 1.0);
 }

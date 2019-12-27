@@ -86,10 +86,33 @@ void processInput(GLFWwindow* window, double dt) {
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
       Engine::setCamRot(glm::normalize(angleAxis(-hRotSpeed, forward) * Engine::getCamRot()));
     }
-
     if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
      // raise(SIGTRAP);
       //__builtin_trap();
+    }
+  }
+  {
+    glm::dvec3 v = glm::vec3(0, 0, 0);
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+      v.x--;
+    }
+    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) {
+      v.x++;
+    }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
+      v.y++;
+    }
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) {
+      v.y--;
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+      v.z--;
+    }
+    if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) {
+      v.z++;
+    }
+    if (length(v)) {
+      Engine::setLightPos(Engine::getLightPos() + (v * dt));
     }
   }
 }
