@@ -78,7 +78,10 @@ void Engine::Go() {
   }
 }
 
-void Engine::Shutdown() { vkb.shutdown(); }
+void Engine::Shutdown() {
+  Game::Shutdown();
+  vkb.shutdown();
+}
 
 glm::dvec3 camPos = glm::dvec3(4.0, 8.0, 5.0);
 glm::dvec3 lightPos = glm::dvec3(4.0, 8.0, 5.0);

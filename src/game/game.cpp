@@ -35,3 +35,8 @@ glm::uint16_t* Game::getIndices(size_t& count) {
   count = level->_inidces.size();
   return &level->_inidces[0];
 }
+void Game::Shutdown() {
+  levelRI.reset();
+  level.reset();
+
+}

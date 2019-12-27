@@ -7,6 +7,7 @@
 namespace Game {
 
 void StartUp();
+void Shutdown();
 void Tick(double dt);
 
 Vertex* getVertices(size_t& count);

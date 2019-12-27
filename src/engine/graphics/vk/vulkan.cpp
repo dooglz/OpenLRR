@@ -63,51 +63,6 @@ void VulkanBackend::startup() {
   // Unless the amount of swapchain images changes, don't need to rebuild this when swapchain does.
   syncObjects = std::make_unique<SyncObjects>(ctx->device, swapchain->swapChainImages.size());
   cmdBuffers = std::make_unique<CmdBuffers>(ctx->device, cmdPool->commandPool, swapchain->swapChainFramebuffers.size());
-
-  /*
-  // data
-  size_t vc, ic;
-  Game::Vertex* vd = Game::getVertices(vc);
-  glm::uint16_t* id = Game::getIndices(ic);
-
-  std::vector<Vertex> convertedVertexes;
-
-  for (int i = 0; i < vc; ++i) {
-    Vertex v = Vertex(vd[i]);
-    convertedVertexes.push_back(v);
-  }
-
-  size_t barrychuckle = 0;
-  for (int j = 0; j < ic; ++j) {
-    switch (barrychuckle % 6) {
-    case 2:
-      convertedVertexes[id[j]].barry = glm::vec3(1, 0, 0);
-      break;
-    case 1:
-      convertedVertexes[id[j]].barry = glm::vec3(0, 1, 0);
-      break;
-    case 0:
-      convertedVertexes[id[j]].barry = glm::vec3(0, 0, 1);
-      break;
-    case 4:
-      convertedVertexes[id[j]].barry = glm::vec3(1, 0, 0);
-      break;
-    case 5:
-      convertedVertexes[id[j]].barry = glm::vec3(0, 1, 0);
-      break;
-    case 3:
-      convertedVertexes[id[j]].barry = glm::vec3(0, 0, 1);
-      break;
-    }
-    barrychuckle++;
-  }
-  const auto vertices_size = sizeof(convertedVertexes[0]) * vc;
-  const auto indices_size = sizeof(id[0]) * ic;
-
-  //vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
-  //vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
-  //vbuffer->UploadIndex(id, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
-*/
   std::cout << "VK init Done" << std::endl;
 }
 
@@ -131,15 +86,7 @@ void VulkanBackend::shutdown() {
 
 void VulkanBackend::drawFrame(double dt) {
   // render commands
-  size_t ic;
-  Game::getIndices(ic);
-  static double icc = 0;
-  icc += (dt * 30);
-  if (icc > ic) {
-    icc = 0;
-  }
-  size_t ics = (size_t)floor(icc);
-  ics = ic;
+
   uint32_t a = WaitForAvilibleImage(ctx->device, swapchain->swapChain, *syncObjects);
   if (a == -1) {
     RebuildSwapChain();
@@ -167,7 +114,9 @@ void VulkanBackend::resize() {
 }
 
 
-vkRenderableItem::~vkRenderableItem() {}
+vkRenderableItem::~vkRenderableItem() {
+  _vbuffer.reset();
+}
 void vkRenderableItem::updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) {
 
 }
@@ -211,6 +160,4 @@ vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::u
   _vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
   _vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   _vbuffer->UploadIndex(indices, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
-
-
 }

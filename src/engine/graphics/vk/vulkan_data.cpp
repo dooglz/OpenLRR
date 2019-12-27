@@ -59,6 +59,7 @@ VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& p
 }
 
 VertexBuffer::~VertexBuffer() {
+  //Todo: check no command buffers have us included
   vkDestroyBuffer(_logicalDevice, vertexBuffer, nullptr);
   vkFreeMemory(_logicalDevice, vertexBufferMemory, nullptr);
   vkDestroyBuffer(_logicalDevice, indexBuffer, nullptr);
