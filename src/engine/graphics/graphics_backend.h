@@ -16,6 +16,8 @@ struct RenderableItem {
   const PIPELINE _pipeline;
   size_t _vcount;
   size_t _icount;
+  virtual void setUniformModelMatrix(glm::mat4 m) = 0;
+  virtual void updateUniform() = 0;
 };
 
 class GraphicsBackend {

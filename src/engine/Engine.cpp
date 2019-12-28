@@ -92,16 +92,20 @@ glm::dvec3 Engine::getCamPos() { return camPos; }
 
 void Engine::setCamPos(const glm::dvec3& p) {
   camPos = p;
-//  std::cout << p.x << " " << p.y << " " << p.z << std::endl;
+  //  std::cout << p.x << " " << p.y << " " << p.z << std::endl;
 }
 glm::dquat Engine::getCamRot() { return camRot; }
 
 void Engine::setCamRot(const glm::dquat& p) {
- // auto gg = normalize(GetForwardVector(p));
-  //std::cout << "R: " << gg.x << " " << gg.y << " " << gg.z << std::endl;
+  // auto gg = normalize(GetForwardVector(p));
+  // std::cout << "R: " << gg.x << " " << gg.y << " " << gg.z << std::endl;
   camRot = p;
 }
 
-
 glm::dvec3 Engine::getLightPos() { return lightPos; }
-void Engine::setLightPos(const glm::dvec3& p) {lightPos = p;}
+void Engine::setLightPos(const glm::dvec3& p) { lightPos = p; }
+glm::dmat4 Engine::getViewMatrix() { return glm::mat4_cast(Engine::getCamRot()) * glm::translate(glm::dmat4(1.0), -Engine::getCamPos()); }
+glm::dmat4 Engine::getProjectionMatrix() {
+  // return glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 1000.0);
+  return glm::perspective(glm::radians(45.0), 1280.0 / 720.0, 0.1, 1000.0);
+}

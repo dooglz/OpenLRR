@@ -9,6 +9,15 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
+struct UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
+  glm::mat4 mvp;
+  glm::vec3 lightDir;
+  glm::vec3 pointLight;
+};
+
 const bool ENABLE_VSYNC = false;
 // things that exist for whole applicaiton
 struct ContextInfo {
@@ -157,21 +166,12 @@ VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
 // TODO, wrap in class
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
 
-struct UniformBufferObject {
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 proj;
-  glm::mat4 mvp;
-  glm::vec3 lightDir;
-  glm::vec3 pointLight;
-};
-
 struct Uniform {
   std::vector<vk::Buffer> uniformBuffers;
   std::vector<vk::DeviceMemory> uniformBuffersMemory;
   Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
   ~Uniform();
-  void updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D& swapChainExtent);
+  void updateUniformBuffer(uint32_t currentImage, const vk::Extent2D& swapChainExtent, const UniformBufferObject& uboData);
 
 private:
   const vk::Device& _logicalDevice;

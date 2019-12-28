@@ -23,6 +23,9 @@ void setLightPos(const glm::dvec3& p);
 glm::dquat getCamRot();
 void setCamRot(const glm::dquat& p);
 
+glm::dmat4 getViewMatrix();
+glm::dmat4 getProjectionMatrix();
+
 } // namespace Engine
 
 #endif // OPENLRR_ENGINE_H

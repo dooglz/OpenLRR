@@ -4,6 +4,7 @@
 
 #include "vulkan.h"
 #include "../../../game/game.h"
+#include "../../Engine.h"
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
 #include <iostream>
@@ -19,7 +20,7 @@ std::unique_ptr<CmdPool> cmdPool;
 std::unique_ptr<CmdBuffers> cmdBuffers;
 std::unique_ptr<SyncObjects> syncObjects;
 //
-//std::unique_ptr<VertexBuffer> vbuffer;
+// std::unique_ptr<VertexBuffer> vbuffer;
 std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
 std::unique_ptr<DescriptorPool> descriptorPool;
 std::unique_ptr<DescriptorSets> descriptorSets;
@@ -77,7 +78,7 @@ void VulkanBackend::shutdown() {
   swapchain.reset();
 
   texture.reset();
-//  vbuffer.reset();
+  //  vbuffer.reset();
   cmdPool.reset();
   descriptorSetLayout.reset();
 
@@ -97,13 +98,13 @@ void VulkanBackend::drawFrame(double dt) {
   }
 
   for (int i = 0; i < totalRIs.size(); ++i) {
-     const vkRenderableItem& ri = *totalRIs[i];
+    vkRenderableItem& ri = *totalRIs[i];
+    ri.updateUniform();
+    uniform->updateUniformBuffer(a, swapchain->swapChainExtent, ri._uniformData);
     cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *ri._vbuffer, ri._icount,
                        *descriptorSets, a);
   }
 
-
-  uniform->updateUniformBuffer(a, dt, swapchain->swapChainExtent);
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);
 }
 
@@ -113,13 +114,8 @@ void VulkanBackend::resize() {
   std::cout << "VK recreate" << std::endl;
 }
 
-
-vkRenderableItem::~vkRenderableItem() {
-  _vbuffer.reset();
-}
-void vkRenderableItem::updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) {
-
-}
+vkRenderableItem::~vkRenderableItem() { _vbuffer.reset(); }
+void vkRenderableItem::updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) {}
 
 vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, RenderableItem::PIPELINE p)
     : RenderableItem(vertices, vcount, indices, icount, p) {
@@ -160,4 +156,15 @@ vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::u
   _vbuffer = std::make_unique<VertexBuffer>(ctx->device, ctx->physicalDevice, vertices_size, indices_size);
   _vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   _vbuffer->UploadIndex(indices, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
+}
+void vkRenderableItem::setUniformModelMatrix(glm::mat4 m) {
+  _uniformData.model = m;
+  _uniformData.mvp = _uniformData.proj * _uniformData.view * m;
+}
+void vkRenderableItem::updateUniform() {
+  _uniformData.view = Engine::getViewMatrix();
+  _uniformData.proj = Engine::getProjectionMatrix();
+  setUniformModelMatrix(_uniformData.model);
+  _uniformData.pointLight = Engine::getLightPos();
+  // _uniformData.lightDir = Engine::
 }

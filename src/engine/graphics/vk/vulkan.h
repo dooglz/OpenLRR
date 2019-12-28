@@ -7,7 +7,7 @@
 
 #include "../graphics_backend.h"
 
-//todo: refactor this out:
+// todo: refactor this out:
 #include "vulkan_internals.h"
 
 #include <memory>
@@ -20,13 +20,15 @@ public:
   void resize() override;
 };
 
-
-struct vkRenderableItem : public RenderableItem{
-  vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, PIPELINE p );
+struct vkRenderableItem : public RenderableItem {
+  vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, PIPELINE p);
   void updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) override;
   ~vkRenderableItem() override;
+  void setUniformModelMatrix(glm::mat4 m) override;
+  void updateUniform() override;
   //
 
   std::unique_ptr<VertexBuffer> _vbuffer;
+  UniformBufferObject _uniformData;
 };
 #endif // OPENLRR_VULKAN_H
