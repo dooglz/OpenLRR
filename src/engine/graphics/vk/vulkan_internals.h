@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+#include "vulkan_pipeline.h"
 
 struct UniformBufferObject {
   glm::mat4 model;
@@ -61,17 +62,6 @@ struct SwapChainInfo {
 private:
   // A SwapChainInfo can't exist without a device anyway, and it allows us to
   // deconstruct ourtselves
-  const vk::Device& _logicalDevice;
-};
-
-struct Pipeline {
-  vk::PipelineLayout pipelineLayout;
-  vk::Pipeline graphicsPipeline;
-  Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
-           const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout);
-  ~Pipeline();
-
-private:
   const vk::Device& _logicalDevice;
 };
 
@@ -180,11 +170,18 @@ private:
 
 struct DescriptorSetLayout {
   vk::DescriptorSetLayout descriptorSetLayout;
-  DescriptorSetLayout(const vk::Device& device);
+  DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings);
   ~DescriptorSetLayout();
-
 private:
   const vk::Device& _logicalDevice;
+};
+
+struct vLitPipeline_DescriptorSetLayout : public DescriptorSetLayout
+        {
+  vLitPipeline_DescriptorSetLayout(const vk::Device& device);
+        private:
+  const std::vector<vk::DescriptorSetLayoutBinding> _generate();
+
 };
 
 struct DescriptorPool {

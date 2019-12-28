@@ -21,7 +21,7 @@ std::unique_ptr<CmdBuffers> cmdBuffers;
 std::unique_ptr<SyncObjects> syncObjects;
 //
 // std::unique_ptr<VertexBuffer> vbuffer;
-std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
+std::unique_ptr<vLitPipeline_DescriptorSetLayout> descriptorSetLayout;
 std::unique_ptr<DescriptorPool> descriptorPool;
 std::unique_ptr<DescriptorSets> descriptorSets;
 //
@@ -54,7 +54,7 @@ void RebuildSwapChain() {
 void VulkanBackend::startup() {
   ctx = std::make_unique<ContextInfo>();
   cmdPool = std::make_unique<CmdPool>(ctx->deviceKHR, ctx->device);
-  descriptorSetLayout = std::make_unique<DescriptorSetLayout>(ctx->device);
+  descriptorSetLayout = std::make_unique<vLitPipeline_DescriptorSetLayout>(ctx->device);
 
   // Textures
   texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);

@@ -159,7 +159,19 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, const vk::Extent2D& swa
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
-DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDevice(device) {
+DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings) : _logicalDevice(device) {
+  vk::DescriptorSetLayoutCreateInfo layoutInfo;
+  layoutInfo.bindingCount = bindings.size();
+  layoutInfo.pBindings = bindings.data();
+  descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+}
+
+DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
+
+vLitPipeline_DescriptorSetLayout::vLitPipeline_DescriptorSetLayout(const vk::Device& device): DescriptorSetLayout(device,_generate()) {
+}
+
+const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayout::_generate() {
   vk::DescriptorSetLayoutBinding uboLayoutBinding;
   uboLayoutBinding.binding = 0;
   uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
@@ -175,15 +187,10 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDev
   samplerLayoutBinding.pImmutableSamplers = nullptr;
   samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
 
-  std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
-  vk::DescriptorSetLayoutCreateInfo layoutInfo;
-  layoutInfo.bindingCount = bindings.size();
-  layoutInfo.pBindings = bindings.data();
+  const std::vector<vk::DescriptorSetLayoutBinding> bindings = {uboLayoutBinding, samplerLayoutBinding};
 
-  descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+return bindings;
 }
-
-DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
 
 DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages) : _logicalDevice{device} {
   vk::DescriptorPoolSize poolSize;
