@@ -59,6 +59,7 @@ VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& p
 }
 
 VertexBuffer::~VertexBuffer() {
+  // Todo: check no command buffers have us included
   vkDestroyBuffer(_logicalDevice, vertexBuffer, nullptr);
   vkFreeMemory(_logicalDevice, vertexBufferMemory, nullptr);
   vkDestroyBuffer(_logicalDevice, indexBuffer, nullptr);
@@ -152,55 +153,31 @@ Uniform::~Uniform() {
     _logicalDevice.freeMemory(uniformBuffersMemory[i]);
   }
 }
-
-void Uniform::updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D& swapChainExtent) {
-  // do double for multiplicaiton beacuse CPUs like numbers.
-
-  static double lifetime = 0;
-  lifetime += dt;
-  double sl = 0.5 + (sin(lifetime) * 0.5);
-  // glm::rotate((float)lifetime, glm::vec3(1.f, 0, 0));
-
-  glm::quat q1 = glm::angleAxis(-1.0f, glm::vec3(1.0, 1.0f, 0));
-  glm::quat q2 = glm::angleAxis(1.0f, glm::vec3(1.0, 1.0f, 0));
-  glm::quat interpolatedquat = glm::mix(q1, q2, (float)sl);
-  glm::vec3 gg = normalize(interpolatedquat * glm::vec3(0, 0, 1.f));
-
-  // glm::vec3 directionalLight = gg;
-  glm::vec3 directionalLight = gg;
-  //= glm::rotate(glm::vec3(0, 0, 1.f), (float)lifetime, glm::vec3(1.f, 0, 0));
-
-  // normalize(glm::vec3(0, 0, 1.f));
-  glm::dmat4 model = glm::dmat4(1.0);
-
-  glm::dquat cq = Engine::getCamRot();
-  glm::dvec3 pos = Engine::getCamPos();
-  glm::dvec3 up = normalize(GetUpVector(cq));
-  glm::dvec3 forwards = normalize(GetForwardVector(cq));
-
-  glm::dmat4 view = glm::lookAt(pos, pos + forwards, up);
-
-  // auto camera_dir = pos +  glm::rotate(cq, glm::dvec3(1, 0, 0));
-  // auto camera_up = glm::rotate(cq, glm::dvec3(0, 0, 1));
-  view = glm::mat4_cast(cq) * glm::translate(glm::dmat4(1.0), -pos);
-  glm::dmat4 proj = glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 1000.0);
-  // proj[1][1] *= -1;
-  glm::dmat4 mvp = proj * view * model;
-  // downgrade to float beacuse gpus don't like numbers
-  const UniformBufferObject ubo = {(glm::fmat4)model, (glm::fmat4)view, (glm::fmat4)proj, (glm::fmat4)mvp, directionalLight};
-
-  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(ubo));
-  memcpy(data, &ubo, sizeof(ubo));
+void Uniform::updateUniformBuffer(uint32_t currentImage, const vk::Extent2D& swapChainExtent, const UniformBufferObject& uboData) {
+  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
+  memcpy(data, &uboData, sizeof(UniformBufferObject));
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
-DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDevice(device) {
+DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings) : _logicalDevice(device) {
+  vk::DescriptorSetLayoutCreateInfo layoutInfo;
+  layoutInfo.bindingCount = bindings.size();
+  layoutInfo.pBindings = bindings.data();
+  descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+}
+
+DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
+
+vLitPipeline_DescriptorSetLayout::vLitPipeline_DescriptorSetLayout(const vk::Device& device): DescriptorSetLayout(device,_generate()) {
+}
+
+const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayout::_generate() {
   vk::DescriptorSetLayoutBinding uboLayoutBinding;
   uboLayoutBinding.binding = 0;
   uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
   uboLayoutBinding.descriptorCount = 1;
   uboLayoutBinding.pImmutableSamplers = nullptr;
-  uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+  uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 
   // for image sampler
   vk::DescriptorSetLayoutBinding samplerLayoutBinding;
@@ -210,15 +187,10 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device) : _logicalDev
   samplerLayoutBinding.pImmutableSamplers = nullptr;
   samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
 
-  std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
-  vk::DescriptorSetLayoutCreateInfo layoutInfo;
-  layoutInfo.bindingCount = bindings.size();
-  layoutInfo.pBindings = bindings.data();
+  const std::vector<vk::DescriptorSetLayoutBinding> bindings = {uboLayoutBinding, samplerLayoutBinding};
 
-  descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+return bindings;
 }
-
-DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
 
 DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages) : _logicalDevice{device} {
   vk::DescriptorPoolSize poolSize;
@@ -430,7 +402,6 @@ void TextureImage::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_
   region.imageSubresource.layerCount = 1;
   region.imageOffset = vk::Offset3D(0, 0, 0);
   region.imageExtent = vk::Extent3D(width, height, 1);
-
 
   commandBuffer.commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
   commandBuffer.submit(_queue);

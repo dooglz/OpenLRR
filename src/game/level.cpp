@@ -132,6 +132,7 @@ auto GetTouchingTileTypesForVert = [](const idx& p, const unsigned char& vert, c
 };
 
 void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16_t>& allIndices) {
+
   allVerts.clear();
   allVerts.resize(_tiles.size() * 4);
   allIndices.clear();
@@ -187,14 +188,19 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
       t.inverted = ShouldBeInverted(t.rockmask);
       const uint16_t inOf = ((uint16_t)i * 4);
 
+      // normal        inverted
+      // 0 -- 1        0 -- 1
+      // | / |         |  \ |
+      // 2 -- 3        2 -- 3
+
       if (t.inverted) {
-        uint16_t Indices[6] = {static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf),
-                               static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf)};
+        uint16_t Indices[6] = {static_cast<uint16_t>(2 + inOf), static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(3 + inOf),
+                               static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(0 + inOf)};
         memcpy(myIndices, Indices, (6 * sizeof(uint16_t)));
         // myIndices = {0, 3, 2, 0, 1, 3};
       } else {
         uint16_t Indices[6] = {static_cast<uint16_t>(0 + inOf), static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(2 + inOf),
-                               static_cast<uint16_t>(1 + inOf), static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf)};
+                               static_cast<uint16_t>(3 + inOf), static_cast<uint16_t>(2 + inOf), static_cast<uint16_t>(1 + inOf)};
         memcpy(myIndices, Indices, 6 * sizeof(uint16_t));
         //  myIndices = {0, 1, 2, 1, 3, 2};
       }
@@ -216,17 +222,34 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
         }
       }
     }
+    // normal        inverted
+    // 0 -- 1        0 -- 1
+    // | / |         |  \ |
+    // 2 -- 3        2 -- 3
 
     {
+      Vertex* myVerts = &allVerts[i * 4];
+
+      if (t.inverted) {
+        myVerts[1].n = normalize(glm::triangleNormal(myVerts[0].p, myVerts[1].p, myVerts[3].p));
+        myVerts[2].n = normalize(glm::triangleNormal(myVerts[3].p, myVerts[2].p, myVerts[0].p));
+      }else {
+        myVerts[0].n = normalize(glm::triangleNormal(myVerts[2].p, myVerts[0].p, myVerts[1].p));
+
+        // myVerts[1].n = normalize(glm::triangleNormal(myVerts[0].p, myVerts[1].p, myVerts[2].p));
+        // myVerts[2].n = normalize(glm::triangleNormal(myVerts[3].p, myVerts[2].p, myVerts[1].p));
+
+        myVerts[3].n = normalize(glm::triangleNormal(myVerts[1].p, myVerts[3].p, myVerts[2].p));
+      }
       // calculate Normals
-      glm::vec3 n1 = normalize(glm::triangleNormal(allVerts[myIndices[0]].p, allVerts[myIndices[1]].p, allVerts[myIndices[2]].p));
-      allVerts[myIndices[0]].n = n1;
-      allVerts[myIndices[1]].n = n1;
-      allVerts[myIndices[2]].n = n1;
-      glm::vec3 n2 = normalize(glm::triangleNormal(allVerts[myIndices[3]].p, allVerts[myIndices[4]].p, allVerts[myIndices[5]].p));
-      allVerts[myIndices[3]].n = n2;
-      allVerts[myIndices[4]].n = n2;
-      allVerts[myIndices[5]].n = n2;
+      //glm::vec3 n1 = normalize(glm::triangleNormal(allVerts[myIndices[0]].p, allVerts[myIndices[1]].p, allVerts[myIndices[2]].p));
+      //allVerts[myIndices[0]].n = n1;
+      //allVerts[myIndices[1]].n = n1;
+      //allVerts[myIndices[2]].n = n1;
+      //glm::vec3 n2 = normalize(glm::triangleNormal(allVerts[myIndices[3]].p, allVerts[myIndices[4]].p, allVerts[myIndices[5]].p));
+      //allVerts[myIndices[3]].n = n2;
+      //allVerts[myIndices[4]].n = n2;
+      //allVerts[myIndices[5]].n = n2;
     }
   }
   // glm::vec3 a(0,0,0);
@@ -244,10 +267,80 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
 
   // glm::vec3 n6 = glm::triangleNormal(c, b, a);
 
+  // debug cube - clockwise
+  const glm::vec3 dbgCubePos(5, 5, 5);
+  std::vector<Game::Vertex> dbgV(24);
+  std::vector<uint16_t> dbgCubeInd(24);
+
+  // top
+  dbgV[0].p = glm::vec3(0, 0, 1);
+  dbgV[1].p = glm::vec3(1, 0, 1);
+  dbgV[2].p = glm::vec3(1, 1, 1);
+  dbgV[3].p = glm::vec3(0, 0, 1);
+  dbgV[4].p = glm::vec3(1, 1, 1);
+  dbgV[5].p = glm::vec3(0, 1, 1);
+  dbgCubeInd[0] = 0;
+  dbgCubeInd[1] = 1;
+  dbgCubeInd[2] = 2;
+  dbgCubeInd[3] = 3;
+  dbgCubeInd[4] = 4;
+  dbgCubeInd[5] = 5;
+  // bottom
+  dbgV[6].p = glm::vec3(0, 0, 0);
+  dbgV[7].p = glm::vec3(1, 0, 0);
+  dbgV[8].p = glm::vec3(1, 1, 0);
+  dbgV[9].p = glm::vec3(0, 0, 0);
+  dbgV[10].p = glm::vec3(1, 1, 0);
+  dbgV[11].p = glm::vec3(0, 1, 0);
+  dbgCubeInd[8] = 6;
+  dbgCubeInd[7] = 7;
+  dbgCubeInd[6] = 8;
+  dbgCubeInd[11] = 9;
+  dbgCubeInd[10] = 10;
+  dbgCubeInd[9] = 11;
+  ////Front side
+  dbgV[12].p = glm::vec3(0, 1, 0);
+  dbgV[13].p = glm::vec3(0, 1, 1);
+  dbgV[14].p = glm::vec3(1, 1, 0);
+  dbgV[15].p = glm::vec3(0, 1, 1);
+  dbgV[16].p = glm::vec3(1, 1, 1);
+  dbgV[17].p = glm::vec3(1, 1, 0);
+  dbgCubeInd[12] = 12;
+  dbgCubeInd[13] = 13;
+  dbgCubeInd[14] = 14;
+  dbgCubeInd[15] = 15;
+  dbgCubeInd[16] = 16;
+  dbgCubeInd[17] = 17;
+  ////Back side
+  dbgV[18].p = glm::vec3(0, 0, 0);
+  dbgV[19].p = glm::vec3(0, 0, 1);
+  dbgV[20].p = glm::vec3(1, 0, 0);
+  dbgV[21].p = glm::vec3(0, 0, 1);
+  dbgV[22].p = glm::vec3(1, 0, 1);
+  dbgV[23].p = glm::vec3(1, 0, 0);
+  dbgCubeInd[18] = 20;
+  dbgCubeInd[19] = 19;
+  dbgCubeInd[20] = 18;
+  dbgCubeInd[21] = 23;
+  dbgCubeInd[22] = 22;
+  dbgCubeInd[23] = 21;
+
+  for (auto& v : dbgV) {
+    v.p -= 0.5f;
+    // v.p *= 4.0f;
+    v.p += (dbgCubePos);
+    v.n = glm::vec3(1, 0, 0);
+    v.c = glm::vec3(0, 1, 0);
+  }
+
   for (auto& v : allVerts) {
     v.p.z = v.p.z * 0.25;
     // v.p.z = 0;
   }
+
+  const auto cnt = allVerts.size();
+  std::transform(dbgCubeInd.begin(), dbgCubeInd.end(), std::back_inserter(allIndices), [cnt](auto& c) { return c + cnt; });
+  allVerts.insert(allVerts.end(), dbgV.begin(), dbgV.end());
 
   std::cout << "WamBam" << std::endl;
 }

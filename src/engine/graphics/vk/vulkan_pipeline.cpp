@@ -4,6 +4,8 @@
 
 #include "vulkan.h"
 #include "vulkan_internals.h"
+#include "vulkan_pipeline.h"
+
 #include <fstream>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
@@ -96,7 +98,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   // rasterizer.polygonMode = vk::PolygonMode::eLine;
   rasterizer.lineWidth = 2.0f;
   rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-  rasterizer.cullMode = vk::CullModeFlagBits::eNone;
+  //rasterizer.cullMode = vk::CullModeFlagBits::eNone;
   rasterizer.frontFace = vk::FrontFace::eClockwise;
   rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -267,4 +269,9 @@ void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::
   presentQueue.presentKHR(&presentInfo);
 
   sync.currentFrame = (sync.currentFrame + 1) % SyncObjects::MAX_FRAMES_IN_FLIGHT;
+}
+vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
+: _descriptorSetLayout{}, Pipeline(device,swapChainExtent,renderPass,Vertex::getPipelineInputState(),_descriptorSetLayout)
+{
+
 }

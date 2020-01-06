@@ -12,6 +12,17 @@
 // Y = 0->intoScreen
 
 
+#define RED                                                                                                                                          \
+  { 1, 0, 0 }
+#define GREEN                                                                                                                                        \
+  { 0, 1, 0 }
+#define BLUE                                                                                                                                         \
+  { 0, 0, 1 }
+#define PINK                                                                                                                                         \
+  { 1, 0, 1 }
+#define YONG                                                                                                                                         \
+  { 1, 1, 0 }
+
 static glm::dvec3 GetUpVector(const glm::dquat &q) {
  // glm::dvec4 UP(0,0,1.0,0);
 //  glm::dquat camQuatConj = glm::conjugate(q);

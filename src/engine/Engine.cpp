@@ -13,7 +13,7 @@
 #include <iostream>
 #include <thread>
 
-VulkanBackend vk;
+VulkanBackend vkb;
 const double TARGET_DT = 1.0 / 30.0;
 size_t delay = 0;
 void baa(double a) {}
@@ -26,7 +26,7 @@ void Engine::OpenWindow(int w, int h) { platform::init(w, h); }
 
 void Engine::Go() {
   bool go = true;
-  vk.startup();
+  vkb.startup();
   Game::StartUp();
   auto lastframe = std::chrono::high_resolution_clock::now();
   try {
@@ -39,7 +39,7 @@ void Engine::Go() {
       go &= !platform::shouldQuit();
       platform::tick(dt);
       Game::Tick(dt);
-      vk.drawFrame(dt);
+      vkb.drawFrame(dt);
       frametimes.add(dt);
     }
   } catch (const std::exception& e) {
@@ -47,9 +47,13 @@ void Engine::Go() {
   }
 }
 
-void Engine::Shutdown() { vk.shutdown(); }
+void Engine::Shutdown() {
+  Game::Shutdown();
+  vkb.shutdown();
+}
 
 glm::dvec3 camPos = glm::dvec3(4.0, 8.0, 5.0);
+glm::dvec3 lightPos = glm::dvec3(4.0, 8.0, 5.0);
 // glm::dquat camRot = glm::dquat(0.9,0.37,0,0);
 glm::dquat camRot = glm::quat_cast(glm::lookAt(camPos, glm::dvec3(4, 2, 0), glm::dvec3(0, 0, -1.0)));
 
@@ -57,12 +61,20 @@ glm::dvec3 Engine::getCamPos() { return camPos; }
 
 void Engine::setCamPos(const glm::dvec3& p) {
   camPos = p;
-//  std::cout << p.x << " " << p.y << " " << p.z << std::endl;
+  //  std::cout << p.x << " " << p.y << " " << p.z << std::endl;
 }
 glm::dquat Engine::getCamRot() { return camRot; }
 
 void Engine::setCamRot(const glm::dquat& p) {
- // auto gg = normalize(GetForwardVector(p));
-  //std::cout << "R: " << gg.x << " " << gg.y << " " << gg.z << std::endl;
+  // auto gg = normalize(GetForwardVector(p));
+  // std::cout << "R: " << gg.x << " " << gg.y << " " << gg.z << std::endl;
   camRot = p;
+}
+
+glm::dvec3 Engine::getLightPos() { return lightPos; }
+void Engine::setLightPos(const glm::dvec3& p) { lightPos = p; }
+glm::dmat4 Engine::getViewMatrix() { return glm::mat4_cast(Engine::getCamRot()) * glm::translate(glm::dmat4(1.0), -Engine::getCamPos()); }
+glm::dmat4 Engine::getProjectionMatrix() {
+  // return glm::perspective(glm::radians(45.0), (double)swapChainExtent.width / (double)swapChainExtent.height, 0.1, 1000.0);
+  return glm::perspective(glm::radians(45.0), 1280.0 / 720.0, 0.1, 1000.0);
 }

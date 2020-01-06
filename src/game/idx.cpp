@@ -20,7 +20,7 @@ const idx idx::DL = {-1, 1};
 const idx idx::DR = {1, 1};
 
 std::vector<Game::idx> idx::getTouchingTilesForVert(const idx& p, const unsigned char& vert) {
-  ;
+
   switch (vert) {
   case 0:
     return {{p + idx::UL}, {p + idx::U}, {p + idx::L}};
@@ -31,6 +31,7 @@ std::vector<Game::idx> idx::getTouchingTilesForVert(const idx& p, const unsigned
   case 3:
     return {{p + idx::R}, {p + idx::D}, {p + idx::DR}};
   }
+  return {};
 }
 std::vector<Game::idx> idx::getTouchingTilesForVert(const unsigned char& vert) const { return idx::getTouchingTilesForVert(*this, vert); }
 

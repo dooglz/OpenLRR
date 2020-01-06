@@ -8,6 +8,16 @@
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+#include "vulkan_pipeline.h"
+
+struct UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
+  glm::mat4 mvp;
+  glm::vec3 lightDir;
+  glm::vec3 pointLight;
+};
 
 const bool ENABLE_VSYNC = false;
 // things that exist for whole applicaiton
@@ -55,17 +65,6 @@ private:
   const vk::Device& _logicalDevice;
 };
 
-struct Pipeline {
-  vk::PipelineLayout pipelineLayout;
-  vk::Pipeline graphicsPipeline;
-  Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
-           const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout);
-  ~Pipeline();
-
-private:
-  const vk::Device& _logicalDevice;
-};
-
 struct SyncObjects {
   std::vector<vk::Semaphore> imageAvailableSemaphores;
   std::vector<vk::Semaphore> renderFinishedSemaphores;
@@ -98,6 +97,7 @@ struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 pos;
   glm::vec3 color;
   glm::vec3 normal;
+  glm::vec3 barry;
   // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
   Vertex(glm::vec3 p, glm::vec3 c) : pos{p}, color{c} {};
   Vertex(const Game::Vertex& v) : pos{v.p}, color{v.c}, normal{v.n} {};
@@ -105,12 +105,14 @@ struct Vertex : public VertexDataFormat<Vertex> {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
   };
-  static const std::array<vk::VertexInputAttributeDescription, 3>* getAttributeDescriptions() {
-    const static std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions = {
+  static const std::array<vk::VertexInputAttributeDescription, 4>* getAttributeDescriptions() {
+    const static std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions = {
         // eR32G32B32A32Sfloat
         vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos)),
         vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)),
         vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)),
+        vk::VertexInputAttributeDescription(3, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, barry)),
+
     };
     return &attributeDescriptions;
   };
@@ -154,20 +156,12 @@ VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
 // TODO, wrap in class
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
 
-struct UniformBufferObject {
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 proj;
-  glm::mat4 mvp;
-  glm::vec3 lightDir;
-};
-
 struct Uniform {
   std::vector<vk::Buffer> uniformBuffers;
   std::vector<vk::DeviceMemory> uniformBuffersMemory;
   Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
   ~Uniform();
-  void updateUniformBuffer(uint32_t currentImage, double dt, const vk::Extent2D& swapChainExtent);
+  void updateUniformBuffer(uint32_t currentImage, const vk::Extent2D& swapChainExtent, const UniformBufferObject& uboData);
 
 private:
   const vk::Device& _logicalDevice;
@@ -176,11 +170,18 @@ private:
 
 struct DescriptorSetLayout {
   vk::DescriptorSetLayout descriptorSetLayout;
-  DescriptorSetLayout(const vk::Device& device);
+  DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings);
   ~DescriptorSetLayout();
-
 private:
   const vk::Device& _logicalDevice;
+};
+
+struct vLitPipeline_DescriptorSetLayout : public DescriptorSetLayout
+        {
+  vLitPipeline_DescriptorSetLayout(const vk::Device& device);
+        private:
+  const std::vector<vk::DescriptorSetLayoutBinding> _generate();
+
 };
 
 struct DescriptorPool {
