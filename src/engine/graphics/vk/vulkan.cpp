@@ -21,14 +21,7 @@ std::unique_ptr<CmdPool> cmdPool;
 std::unique_ptr<CmdBuffers> cmdBuffers;
 std::unique_ptr<SyncObjects> syncObjects;
 //
-// std::unique_ptr<VertexBuffer> vbuffer;
-// std::unique_ptr<vLitPipeline_DescriptorSetLayout> descriptorSetLayout;
 std::unique_ptr<DescriptorPool> descriptorPool;
-// std::unique_ptr<DescriptorSets> descriptorSets;
-//
-// std::unique_ptr<Uniform> uniform;
-//
-// std::unique_ptr<TextureImage> texture;
 //
 std::vector<vkRenderableItem*> totalRIs;
 void RebuildSwapChain() {
@@ -36,7 +29,6 @@ void RebuildSwapChain() {
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
     pipelines[i].reset();
   }
-  // pipeline.reset();
   renderPass.reset();
   swapchain.reset();
 
@@ -63,11 +55,6 @@ void RebuildSwapChain() {
     }
   }
 
-  // uniform = std::make_unique<Uniform>(swapchain->swapChainFramebuffers.size(), ctx->device, ctx->physicalDevice);
-
-  //  descriptorSets =
-  //      std::make_unique<DescriptorSets>(ctx->device, swapchain->swapChainImages, descriptorSetLayout->descriptorSetLayout,
-  //                                       descriptorPool->descriptorPool, uniform->uniformBuffers, texture->_imageView, texture->_imageSampler);
   std::cout << "swapchain Built" << std::endl;
 }
 
@@ -98,12 +85,7 @@ void VulkanBackend::shutdown() {
   }
   renderPass.reset();
   swapchain.reset();
-
-  // texture.reset();
-  //  vbuffer.reset();
   cmdPool.reset();
-  // descriptorSetLayout.reset();
-
   ctx.reset();
 }
 
@@ -122,7 +104,7 @@ void VulkanBackend::drawFrame(double dt) {
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
     switch (i) {
     case RenderableItem::lit: {
-      static_cast<vLitPipeline*>(pipelines[i].get())->UpdateGlobalUniform(a);
+   //   static_cast<vLitPipeline*>(pipelines[i].get())->UpdateGlobalUniform(a);
     }
     default:
       break;
@@ -131,15 +113,16 @@ void VulkanBackend::drawFrame(double dt) {
 
   for (int i = 0; i < totalRIs.size(); ++i) {
     vkRenderableItem& ri = *totalRIs[i];
-    ri.updateUniform();
-    // uniform->updateUniformBuffer(a, swapchain->swapChainExtent, ri._uniformData);
-    // auto aa = Pipeline::BindReleventDescriptor;
-    // auto ab = [&ri, ] { return *pipelines[ri._pipeline] };
-    //  auto f3 = std::bind(&Pipeline::BindReleventDescriptor, &pipelines[ri._pipeline], std::placeholders::_1);
+    if (ri._pipeline == RenderableItem::lit) {
+      static_cast<vLitPipeline*>(pipelines[i].get())->UpdateModelUniform(a);
+    }
+    //ri.updateUniform();
+
     std::function<void(const vk::CommandBuffer&)> f4 = [&ri, a](const vk::CommandBuffer& c) {
       pipelines[ri._pipeline]->BindReleventDescriptor(c, a);
     };
-    // aa(void);
+
+
     cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[ri._pipeline], *ri._vbuffer,
                        ri._icount, f4, a);
   }
@@ -197,13 +180,12 @@ vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::u
   _vbuffer->UploadIndex(indices, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 }
 void vkRenderableItem::setUniformModelMatrix(glm::mat4 m) {
-  _uniformData.model = m;
-  _uniformData.mvp = _uniformData.proj * _uniformData.view * m;
+  //_uniformData.model = m;
+//  _uniformData.mvp = _uniformData.proj * _uniformData.view * m;
 }
 void vkRenderableItem::updateUniform() {
-  _uniformData.view = Engine::getViewMatrix();
-  _uniformData.proj = Engine::getProjectionMatrix();
-  setUniformModelMatrix(_uniformData.model);
-  _uniformData.pointLight = Engine::getLightPos();
-  // _uniformData.lightDir = Engine::
+// _uniformData.view = Engine::getViewMatrix();
+// _uniformData.proj = Engine::getProjectionMatrix();
+// setUniformModelMatrix(_uniformData.model);
+// _uniformData.pointLight = Engine::getLightPos();
 }

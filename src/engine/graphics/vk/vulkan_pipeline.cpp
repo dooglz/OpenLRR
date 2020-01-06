@@ -279,14 +279,14 @@ void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, 
                                              const vk::CommandPool& pool, vk::Queue& queue) {
 
   // uniforms
-  _uniform = std::make_unique<Uniform>(swapChainFramebuffers.size(), _logicalDevice, pdevice);
-
+  _globalUniform = std::make_unique<Uniform>(sizeof(vLit_global_UniformBufferObject), swapChainFramebuffers.size(), _logicalDevice, pdevice);
+  _modelUniform = std::make_unique<Uniform>(sizeof(vLit_object_UniformBufferObject), swapChainFramebuffers.size(), _logicalDevice, pdevice);
   // images
   _texture = std::make_unique<TextureImage>(_logicalDevice, pdevice, pool, queue);
 
-  _descriptorSets =
-      std::make_unique<DescriptorSets>(_logicalDevice, swapChainImages, vLitPipeline_DescriptorSetLayout(_logicalDevice).descriptorSetLayout,
-                                       descriptorPool, _uniform->uniformBuffers, _texture->_imageView, _texture->_imageSampler);
+  _descriptorSets = std::make_unique<vLitPipeline_DescriptorSet>(
+      _logicalDevice, swapChainImages, vLitPipeline_DescriptorSetLayout(_logicalDevice).descriptorSetLayout, descriptorPool,
+      _globalUniform->uniformBuffers, _modelUniform->uniformBuffers, _texture->_imageView, _texture->_imageSampler);
 }
 
 void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, uint32_t index) {
@@ -299,13 +299,16 @@ void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, ui
 }
 
 void vLitPipeline::UpdateGlobalUniform(uint32_t index) {
-  UniformBufferObject uniformData;
+  vLit_global_UniformBufferObject uniformData = {};
   uniformData.view = Engine::getViewMatrix();
   uniformData.proj = Engine::getProjectionMatrix();
   uniformData.pointLight = Engine::getLightPos();
+  _globalUniform->updateUniformBuffer(index, &uniformData);
+}
 
+void vLitPipeline::UpdateModelUniform(uint32_t index) {
+  vLit_object_UniformBufferObject uniformData = {};
   uniformData.model = glm::mat4(1.0f);
-  uniformData.mvp = uniformData.proj * uniformData.view * uniformData.model;
-
-  _uniform->updateUniformBuffer(index, uniformData);
+  uniformData.mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
+  _modelUniform->updateUniformBuffer(index, (void*)&uniformData);
 }

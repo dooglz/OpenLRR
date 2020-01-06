@@ -3,15 +3,19 @@
 #extension GL_OES_standard_derivatives : enable
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0) uniform UniformBufferObject {
-  mat4 model;
+layout(binding = 0) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
-  mat4 mvp;
- vec3 lightDir;
+  vec3 lightDir;
   vec3 pointLight;
 }
-ubo;
+gubo;
+
+layout(binding = 1) uniform vLit_object_UniformBufferObject {
+  mat4 model;
+  mat4 mvp;
+}
+mubo;
 
 
 flat layout(location = 0) in float intensity;
@@ -22,7 +26,8 @@ layout(location = 4) in vec3 fragVert;
 flat layout(location = 5) in vec3 normal;
 
 
-layout(binding = 1) uniform sampler2D texSampler;
+layout(binding = 2) uniform sampler2D texSampler;
+
 layout(location = 0) out vec4 outColor;
 
 
@@ -37,7 +42,7 @@ vec3 d = fwidth(barry);
 void main() {
     vec3 fragPosition = fragVert;
     //calculate the vector from this pixels surface to the light source
-    vec3 surfaceToLight = ubo.pointLight - fragPosition;
+    vec3 surfaceToLight = gubo.pointLight - fragPosition;
     //calculate the cosine of the angle of incidence
     float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
     brightness = clamp(brightness, 0, 1);
@@ -48,6 +53,7 @@ void main() {
     // outColor = vec4(tileColour,1.0);
     outColor = mix( vec4(0,0.0,0.0,1.0),outColor, edgeFactor());
     //outColor =  mix( vec4(0,1.0,1.0,1.0),vec4(barry,1), edgeFactor());
-    //outColor = vec4(ubo.pointLight, 1.0);
-    //outColor = vec4(1.0,1.0,1.0, 1.0);
+    //outColor = vec4(gubo.pointLight, 1.0);
+  //  outColor = vec4(1.0,1.0,1.0, 1.0);
+  outColor = vec4(tileColour,1.0);
 }

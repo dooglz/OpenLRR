@@ -1,15 +1,19 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0) uniform UniformBufferObject {
-  mat4 model;
+layout(binding = 0) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
-  mat4 mvp;
   vec3 lightDir;
   vec3 pointLight;
 }
-ubo;
+gubo;
+
+layout(binding = 1) uniform vLit_object_UniformBufferObject {
+  mat4 model;
+  mat4 mvp;
+}
+mubo;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
@@ -28,12 +32,12 @@ void main() {
     fragVert = inPosition;
     outNormal = inNormal;
 
-    gl_Position = ubo.mvp * vec4(inPosition, 1.0);
+    gl_Position = mubo.mvp * vec4(inPosition, 1.0);
 
     outBarry = inBarry;
     // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));
     // vec3 lightDir = normalize(vec3(0,0,1.f));
-    // intensity = dot(normalize(inNormal), ubo.lightDir);
+    // intensity = dot(normalize(inNormal), gubo.lightDir);
     intensity = 1;
     /*
     int tri = gl_VertexIndex % 3;

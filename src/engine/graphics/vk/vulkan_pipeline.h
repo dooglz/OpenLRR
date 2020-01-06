@@ -38,7 +38,7 @@ public:
       );
   void BindReleventDescriptor(const vk::CommandBuffer& cmdbuff, uint32_t index) override;
   void UpdateGlobalUniform(uint32_t index);
-
+  void UpdateModelUniform(uint32_t index);
     
 
 private:
@@ -46,7 +46,8 @@ private:
   // std::unique_ptr<DescriptorSets> _descriptorSets;
 
   std::unique_ptr<DescriptorSets> _descriptorSets;
-  std::unique_ptr<Uniform> _uniform;
+  std::unique_ptr<Uniform> _globalUniform;
+  std::unique_ptr<Uniform> _modelUniform;
   std::unique_ptr<TextureImage> _texture;
 };
 

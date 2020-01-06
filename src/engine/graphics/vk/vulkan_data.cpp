@@ -134,14 +134,13 @@ void createDescriptorSetLayout() {
   // vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 }
 
-Uniform::Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice) : _qty{qty}, _logicalDevice(device) {
-  vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-
+Uniform::Uniform(size_t uboSize, size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice)
+    : _size{uboSize}, _qty{qty}, _logicalDevice(device) {
   uniformBuffers.resize(_qty);
   uniformBuffersMemory.resize(_qty);
 
   for (size_t i = 0; i < _qty; i++) {
-    uniformBuffers[i] = createBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
+    uniformBuffers[i] = createBuffer(device, _size, vk::BufferUsageFlagBits::eUniformBuffer);
     uniformBuffersMemory[i] = AllocateBufferOnDevice(
         device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
   }
@@ -153,9 +152,9 @@ Uniform::~Uniform() {
     _logicalDevice.freeMemory(uniformBuffersMemory[i]);
   }
 }
-void Uniform::updateUniformBuffer(uint32_t currentImage, const UniformBufferObject& uboData) {
-  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
-  memcpy(data, &uboData, sizeof(UniformBufferObject));
+void Uniform::updateUniformBuffer(uint32_t currentImage, const void* uboData) {
+  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, _size);
+  memcpy(data, &uboData, _size);
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
@@ -172,22 +171,29 @@ DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSe
 vLitPipeline_DescriptorSetLayout::vLitPipeline_DescriptorSetLayout(const vk::Device& device) : DescriptorSetLayout(device, _generate()) {}
 
 const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayout::_generate() {
-  vk::DescriptorSetLayoutBinding uboLayoutBinding;
-  uboLayoutBinding.binding = 0;
-  uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
-  uboLayoutBinding.descriptorCount = 1;
-  uboLayoutBinding.pImmutableSamplers = nullptr;
-  uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+  vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
+  globalUboLayoutBinding.binding = 0;
+  globalUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  globalUboLayoutBinding.descriptorCount = 1;
+  globalUboLayoutBinding.pImmutableSamplers = nullptr;
+  globalUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+
+  vk::DescriptorSetLayoutBinding modelUboLayoutBinding;
+  modelUboLayoutBinding.binding = 1;
+  modelUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  modelUboLayoutBinding.descriptorCount = 1;
+  modelUboLayoutBinding.pImmutableSamplers = nullptr;
+  modelUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 
   // for image sampler
   vk::DescriptorSetLayoutBinding samplerLayoutBinding;
-  samplerLayoutBinding.binding = 1;
+  samplerLayoutBinding.binding = 2;
   samplerLayoutBinding.descriptorCount = 1;
   samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
   samplerLayoutBinding.pImmutableSamplers = nullptr;
   samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
 
-  const std::vector<vk::DescriptorSetLayoutBinding> bindings = {uboLayoutBinding, samplerLayoutBinding};
+  const std::vector<vk::DescriptorSetLayoutBinding> bindings = {globalUboLayoutBinding, modelUboLayoutBinding, samplerLayoutBinding};
 
   return bindings;
 }
@@ -197,11 +203,13 @@ DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::I
   poolSize.type = vk::DescriptorType::eUniformBuffer;
   poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
-  std::array<vk::DescriptorPoolSize, 2> poolSizes = {};
+  std::array<vk::DescriptorPoolSize, 3> poolSizes = {};
   poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
   poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
-  poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
+  poolSizes[1].type = vk::DescriptorType::eUniformBuffer;
   poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[2].type = vk::DescriptorType::eCombinedImageSampler;
+  poolSizes[2].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
   vk::DescriptorPoolCreateInfo poolInfo;
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
@@ -212,51 +220,65 @@ DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::I
 
 DescriptorPool::~DescriptorPool() { _logicalDevice.destroyDescriptorPool(descriptorPool); }
 
-DescriptorSets::DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
-                               const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
-                               const std::vector<vk::Buffer>& uniformBuffers, const vk::ImageView& textureImageView,
-                               const vk::Sampler& textureSampler)
-    : _logicalDevice(device) {
-
-  std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
-  vk::DescriptorSetAllocateInfo allocInfo;
-  allocInfo.descriptorPool = descriptorPool;
-  allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
-  allocInfo.pSetLayouts = layouts.data();
-
-  descriptorSets = device.allocateDescriptorSets(allocInfo);
-
-  for (size_t i = 0; i < swapChainImages.size(); i++) {
-
-    vk::DescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = uniformBuffers[i];
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(UniformBufferObject);
-
-    vk::DescriptorImageInfo imageInfo = {};
-    imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    imageInfo.imageView = textureImageView;
-    imageInfo.sampler = textureSampler;
-
-    std::array<vk::WriteDescriptorSet, 2> descriptorWrites = {};
-    descriptorWrites[0].dstSet = descriptorSets[i];
-    descriptorWrites[0].dstBinding = 0;
-    descriptorWrites[0].dstArrayElement = 0;
-    descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-    descriptorWrites[0].descriptorCount = 1;
-    descriptorWrites[0].pBufferInfo = &bufferInfo;
-    descriptorWrites[1].dstSet = descriptorSets[i];
-    descriptorWrites[1].dstBinding = 1;
-    descriptorWrites[1].dstArrayElement = 0;
-    descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    descriptorWrites[1].descriptorCount = 1;
-    descriptorWrites[1].pImageInfo = &imageInfo;
-
-    device.updateDescriptorSets(descriptorWrites, nullptr);
-  }
-}
+DescriptorSets::DescriptorSets(const vk::Device& device): _logicalDevice(device) {}
 
 DescriptorSets::~DescriptorSets() {}
+
+vLitPipeline_DescriptorSet::vLitPipeline_DescriptorSet(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
+                                                       const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
+                                                       const std::vector<vk::Buffer>& globalUniformBuffers,
+                                                       const std::vector<vk::Buffer>& modelUniformBuffers, const vk::ImageView& textureImageView,
+                                                       const vk::Sampler& textureSampler): DescriptorSets(device) 
+  {
+
+            
+  std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+    vk::DescriptorSetAllocateInfo allocInfo;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+    allocInfo.pSetLayouts = layouts.data();
+
+    descriptorSets = device.allocateDescriptorSets(allocInfo);
+
+    for (size_t i = 0; i < swapChainImages.size(); i++) {
+
+      vk::DescriptorBufferInfo bufferInfo1 = {};
+      bufferInfo1.buffer = globalUniformBuffers[i];
+      bufferInfo1.offset = 0;
+      bufferInfo1.range = sizeof(vLit_global_UniformBufferObject);
+      vk::DescriptorBufferInfo bufferInfo2 = {};
+      bufferInfo2.buffer = modelUniformBuffers[i];
+      bufferInfo2.offset = 0;
+      bufferInfo2.range = sizeof(vLit_object_UniformBufferObject);
+
+      vk::DescriptorImageInfo imageInfo = {};
+      imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+      imageInfo.imageView = textureImageView;
+      imageInfo.sampler = textureSampler;
+
+      std::array<vk::WriteDescriptorSet, 3> descriptorWrites = {};
+      descriptorWrites[0].dstSet = descriptorSets[i];
+      descriptorWrites[0].dstBinding = 0;
+      descriptorWrites[0].dstArrayElement = 0;
+      descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+      descriptorWrites[0].descriptorCount = 1;
+      descriptorWrites[0].pBufferInfo = &bufferInfo1;
+      descriptorWrites[1].dstSet = descriptorSets[i];
+      descriptorWrites[1].dstBinding = 1;
+      descriptorWrites[1].dstArrayElement = 0;
+      descriptorWrites[1].descriptorType = vk::DescriptorType::eUniformBuffer;
+      descriptorWrites[1].descriptorCount = 1;
+      descriptorWrites[1].pBufferInfo = &bufferInfo2;
+      descriptorWrites[2].dstSet = descriptorSets[i];
+      descriptorWrites[2].dstBinding = 2;
+      descriptorWrites[2].dstArrayElement = 0;
+      descriptorWrites[2].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+      descriptorWrites[2].descriptorCount = 1;
+      descriptorWrites[2].pImageInfo = &imageInfo;
+
+      device.updateDescriptorSets(descriptorWrites, nullptr);
+    }
+  }
 
 TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue)
     : _logicalDevice(device), _physicalDevice(pdevice), _pool(pool), _queue(queue) {
@@ -306,7 +328,7 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
     samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
     samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
     samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
-    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.anisotropyEnable = VK_FALSE;
     samplerInfo.maxAnisotropy = 16;
     samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;

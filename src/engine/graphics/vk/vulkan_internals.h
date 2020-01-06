@@ -12,6 +12,7 @@
 
 #include "vulkan_pipeline.h"
 
+/*
 struct UniformBufferObject {
   glm::mat4 model;
   glm::mat4 view;
@@ -20,7 +21,7 @@ struct UniformBufferObject {
   glm::vec3 lightDir;
   glm::vec3 pointLight;
 };
-
+*/
 struct vLit_global_UniformBufferObject {
   glm::mat4 view;
   glm::mat4 proj;
@@ -29,8 +30,9 @@ struct vLit_global_UniformBufferObject {
 };
 
 struct vLit_object_UniformBufferObject {
-  glm::mat4 model;
-  glm::mat4 mvp;
+  alignas(16) glm::mat4 model;
+  alignas(16) glm::mat4 mvp;
+
 };
 
 const bool ENABLE_VSYNC = false;
@@ -173,13 +175,14 @@ vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format
 struct Uniform {
   std::vector<vk::Buffer> uniformBuffers;
   std::vector<vk::DeviceMemory> uniformBuffersMemory;
-  Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
+  Uniform(size_t uboSize, size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
   ~Uniform();
-  void updateUniformBuffer(uint32_t currentImage, const UniformBufferObject& uboData);
+  void updateUniformBuffer(uint32_t currentImage, const void* uboData);
 
 private:
   const vk::Device& _logicalDevice;
   const size_t _qty;
+  const size_t _size;
 };
 
 struct DescriptorSetLayout {
@@ -209,14 +212,20 @@ private:
 
 struct DescriptorSets {
   std::vector<vk::DescriptorSet> descriptorSets;
-  DescriptorSets(const vk::Device& device, const std::vector<vk::Image>& swapChainImages, const vk::DescriptorSetLayout& descriptorSetLayout,
-                 const vk::DescriptorPool& descriptorPool, const std::vector<vk::Buffer>& uniformBuffers, const vk::ImageView& textureImageView,
-                 const vk::Sampler& textureSampler);
+  DescriptorSets(const vk::Device& device);
   ~DescriptorSets();
 
-private:
+protected:
   const vk::Device& _logicalDevice;
 };
+
+struct vLitPipeline_DescriptorSet : public DescriptorSets {
+  vLitPipeline_DescriptorSet(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
+                             const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
+                             const std::vector<vk::Buffer>& globalUniformBuffers, const std::vector<vk::Buffer>& modelUniformBuffers,
+                             const vk::ImageView& textureImageView, const vk::Sampler& textureSampler);
+};
+
 
 struct CmdBuffers {
   std::vector<vk::CommandBuffer> commandBuffers;
@@ -226,7 +235,7 @@ struct CmdBuffers {
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
               std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index);
 
-private:
+protected:
   void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,
                       std::function<void(const vk::CommandBuffer&)> descriptorSetFunc);
 };

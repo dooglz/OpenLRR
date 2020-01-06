@@ -29,7 +29,7 @@ struct vkRenderableItem : public RenderableItem {
   //
 
   std::unique_ptr<VertexBuffer> _vbuffer;
-  UniformBufferObject _uniformData;
+  //UniformBufferObject _uniformData;
 
   // std::unique_ptr<DescriptorSets> _descriptorSets;
 };
