@@ -2,10 +2,11 @@
 // Created by Sam Serrels on 30/11/2019.
 //
 
+#include "vulkan_pipeline.h"
 #include "vulkan.h"
 #include "vulkan_internals.h"
-#include "vulkan_pipeline.h"
 
+#include "../../Engine.h"
 #include <fstream>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
@@ -98,7 +99,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   // rasterizer.polygonMode = vk::PolygonMode::eLine;
   rasterizer.lineWidth = 2.0f;
   rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-  //rasterizer.cullMode = vk::CullModeFlagBits::eNone;
+  // rasterizer.cullMode = vk::CullModeFlagBits::eNone;
   rasterizer.frontFace = vk::FrontFace::eClockwise;
   rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -148,7 +149,6 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   pipelineInfo.subpass = 0;
 
   graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineInfo);
-
   std::cout << "Pipeline is cool" << std::endl;
 
   vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -270,8 +270,42 @@ void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::
 
   sync.currentFrame = (sync.currentFrame + 1) % SyncObjects::MAX_FRAMES_IN_FLIGHT;
 }
-vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
-: _descriptorSetLayout{}, Pipeline(device,swapChainExtent,renderPass,Vertex::getPipelineInputState(),_descriptorSetLayout)
-{
 
+vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
+    : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), vLitPipeline_DescriptorSetLayout(device).descriptorSetLayout) {}
+
+void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, const std::vector<vk::Image>& swapChainImages,
+                                             const std::vector<vk::Framebuffer>& swapChainFramebuffers, const vk::DescriptorPool& descriptorPool,
+                                             const vk::CommandPool& pool, vk::Queue& queue) {
+
+  // uniforms
+  _uniform = std::make_unique<Uniform>(swapChainFramebuffers.size(), _logicalDevice, pdevice);
+
+  // images
+  _texture = std::make_unique<TextureImage>(_logicalDevice, pdevice, pool, queue);
+
+  _descriptorSets =
+      std::make_unique<DescriptorSets>(_logicalDevice, swapChainImages, vLitPipeline_DescriptorSetLayout(_logicalDevice).descriptorSetLayout,
+                                       descriptorPool, _uniform->uniformBuffers, _texture->_imageView, _texture->_imageSampler);
+}
+
+void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, uint32_t index) {
+  assert(_descriptorSets && _descriptorSets->descriptorSets.size() >= index);
+  cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout,
+                               0, // first set
+                               _descriptorSets->descriptorSets[index],
+                               nullptr // dynamicOffsets
+  );
+}
+
+void vLitPipeline::UpdateGlobalUniform(uint32_t index) {
+  UniformBufferObject uniformData;
+  uniformData.view = Engine::getViewMatrix();
+  uniformData.proj = Engine::getProjectionMatrix();
+  uniformData.pointLight = Engine::getLightPos();
+
+  uniformData.model = glm::mat4(1.0f);
+  uniformData.mvp = uniformData.proj * uniformData.view * uniformData.model;
+
+  _uniform->updateUniformBuffer(index, uniformData);
 }

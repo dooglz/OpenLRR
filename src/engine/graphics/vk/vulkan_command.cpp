@@ -5,21 +5,24 @@
 #include "vulkan.h"
 #include "vulkan_internals.h"
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <set>
 #include <vulkan/vulkan.hpp>
 
 void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer,
-                                const vk::PipelineLayout& pipelineLayout, const vk::DescriptorSet& descriptorSet) {
+                                const vk::PipelineLayout& pipelineLayout, std::function<void(const vk::CommandBuffer&)> descriptorSetFunc) {
 
   cmdBuffer.bindVertexBuffers(0, vbuf.vertexBuffer, {0});
   cmdBuffer.bindIndexBuffer(vbuf.indexBuffer, 0, vk::IndexType::eUint16);
-
+  descriptorSetFunc(cmdBuffer);
+  /*
   cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout,
                                0, // first set
                                descriptorSet,
                                nullptr // dynamicOffsets
   );
+  */
   vkCmdDrawIndexed(cmdBuffer, count, 1, 0, 0, 0);
 
   // vkCmdDraw(cmdBuffer, count, 1, 0, 0);
@@ -47,7 +50,7 @@ struct RecordInfoHash {
 
 void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
                         const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
-                        uint32_t vcount, const DescriptorSets& descriptorSets, uint32_t index) {
+                        uint32_t vcount, std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index) {
 
   const RecordInfo h = {renderPass, pipeline, swapChainExtent, vbuf, vcount, index};
   const size_t thehash = RecordInfoHash{}(h);
@@ -76,8 +79,8 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
 
   commandBuffers[index].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
 
-  RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSets.descriptorSets[index]);
-
+  // RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSets.descriptorSets[index]);
+  RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSetFunc);
   commandBuffers[index].endRenderPass();
   commandBuffers[index].end();
 }

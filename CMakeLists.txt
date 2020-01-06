@@ -31,7 +31,7 @@ message(STATUS ${Vulkan_LIBRARY} ${Vulkan_INCLUDE_DIRS})
 
 if(CMAKE_GENERATOR MATCHES "Visual Studio")
   #windows vulkan platform layer definition
-  target_compile_definitions(OpenLRR PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+  target_compile_definitions(OpenLRR PRIVATE VK_USE_PLATFORM_WIN32_KHR NOMINMAX)
   #Force multiproc build on windows
   if(CMAKE_C_COMPILER_ID MATCHES "MSVC|Intel" OR CMAKE_CXX_COMPILER_ID MATCHES "MSVC|Intel")
     string(APPEND CMAKE_C_FLAGS " /MP")

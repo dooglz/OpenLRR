@@ -4,10 +4,12 @@
 
 #pragma once
 #include "../../../game/game_graphics.h"
+#include <functional>
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+
 #include "vulkan_pipeline.h"
 
 struct UniformBufferObject {
@@ -17,6 +19,18 @@ struct UniformBufferObject {
   glm::mat4 mvp;
   glm::vec3 lightDir;
   glm::vec3 pointLight;
+};
+
+struct vLit_global_UniformBufferObject {
+  glm::mat4 view;
+  glm::mat4 proj;
+  glm::vec3 lightDir;
+  glm::vec3 pointLight;
+};
+
+struct vLit_object_UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 mvp;
 };
 
 const bool ENABLE_VSYNC = false;
@@ -161,7 +175,7 @@ struct Uniform {
   std::vector<vk::DeviceMemory> uniformBuffersMemory;
   Uniform(size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
   ~Uniform();
-  void updateUniformBuffer(uint32_t currentImage, const vk::Extent2D& swapChainExtent, const UniformBufferObject& uboData);
+  void updateUniformBuffer(uint32_t currentImage, const UniformBufferObject& uboData);
 
 private:
   const vk::Device& _logicalDevice;
@@ -172,16 +186,16 @@ struct DescriptorSetLayout {
   vk::DescriptorSetLayout descriptorSetLayout;
   DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings);
   ~DescriptorSetLayout();
+
 private:
   const vk::Device& _logicalDevice;
 };
 
-struct vLitPipeline_DescriptorSetLayout : public DescriptorSetLayout
-        {
+struct vLitPipeline_DescriptorSetLayout : public DescriptorSetLayout {
   vLitPipeline_DescriptorSetLayout(const vk::Device& device);
-        private:
-  const std::vector<vk::DescriptorSetLayoutBinding> _generate();
 
+private:
+  const std::vector<vk::DescriptorSetLayoutBinding> _generate();
 };
 
 struct DescriptorPool {
@@ -210,11 +224,11 @@ struct CmdBuffers {
   CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
   void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
-              const DescriptorSets& descriptorSets, uint32_t index);
+              std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index);
 
 private:
   void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,
-                      const vk::DescriptorSet& descriptorSet);
+                      std::function<void(const vk::CommandBuffer&)> descriptorSetFunc);
 };
 struct OneOffCmdBuffer {
   OneOffCmdBuffer() = delete;

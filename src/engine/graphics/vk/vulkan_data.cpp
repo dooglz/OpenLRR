@@ -153,13 +153,14 @@ Uniform::~Uniform() {
     _logicalDevice.freeMemory(uniformBuffersMemory[i]);
   }
 }
-void Uniform::updateUniformBuffer(uint32_t currentImage, const vk::Extent2D& swapChainExtent, const UniformBufferObject& uboData) {
+void Uniform::updateUniformBuffer(uint32_t currentImage, const UniformBufferObject& uboData) {
   void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
   memcpy(data, &uboData, sizeof(UniformBufferObject));
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
-DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings) : _logicalDevice(device) {
+DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings)
+    : _logicalDevice(device) {
   vk::DescriptorSetLayoutCreateInfo layoutInfo;
   layoutInfo.bindingCount = bindings.size();
   layoutInfo.pBindings = bindings.data();
@@ -168,8 +169,7 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::ve
 
 DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
 
-vLitPipeline_DescriptorSetLayout::vLitPipeline_DescriptorSetLayout(const vk::Device& device): DescriptorSetLayout(device,_generate()) {
-}
+vLitPipeline_DescriptorSetLayout::vLitPipeline_DescriptorSetLayout(const vk::Device& device) : DescriptorSetLayout(device, _generate()) {}
 
 const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayout::_generate() {
   vk::DescriptorSetLayoutBinding uboLayoutBinding;
@@ -189,7 +189,7 @@ const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayo
 
   const std::vector<vk::DescriptorSetLayoutBinding> bindings = {uboLayoutBinding, samplerLayoutBinding};
 
-return bindings;
+  return bindings;
 }
 
 DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages) : _logicalDevice{device} {

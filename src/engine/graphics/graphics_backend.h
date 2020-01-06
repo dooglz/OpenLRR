@@ -8,7 +8,7 @@
 #include "../../game/game_graphics.h"
 
 struct RenderableItem {
-  enum PIPELINE { lit, unlit };
+  enum PIPELINE { lit, unlit, PIPELINE_COUNT };
   RenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, PIPELINE p)
       : _pipeline{p}, _vcount{vcount}, _icount{icount} {}
   virtual void updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) = 0;

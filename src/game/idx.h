@@ -4,6 +4,7 @@
 
 #ifndef OPENLRR_IDX_H
 #define OPENLRR_IDX_H
+
 #include <cmath>
 #include <iostream>
 #include <vector>

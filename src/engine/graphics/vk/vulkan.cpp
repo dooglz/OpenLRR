@@ -7,6 +7,7 @@
 #include "../../Engine.h"
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
+#include <functional>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
@@ -15,24 +16,27 @@
 std::unique_ptr<ContextInfo> ctx;
 std::unique_ptr<SwapChainInfo> swapchain;
 vk::UniqueRenderPass renderPass;
-std::unique_ptr<Pipeline> pipeline;
+std::unique_ptr<Pipeline> pipelines[RenderableItem::PIPELINE_COUNT];
 std::unique_ptr<CmdPool> cmdPool;
 std::unique_ptr<CmdBuffers> cmdBuffers;
 std::unique_ptr<SyncObjects> syncObjects;
 //
 // std::unique_ptr<VertexBuffer> vbuffer;
-std::unique_ptr<vLitPipeline_DescriptorSetLayout> descriptorSetLayout;
+// std::unique_ptr<vLitPipeline_DescriptorSetLayout> descriptorSetLayout;
 std::unique_ptr<DescriptorPool> descriptorPool;
-std::unique_ptr<DescriptorSets> descriptorSets;
+// std::unique_ptr<DescriptorSets> descriptorSets;
 //
-std::unique_ptr<Uniform> uniform;
+// std::unique_ptr<Uniform> uniform;
 //
-std::unique_ptr<TextureImage> texture;
+// std::unique_ptr<TextureImage> texture;
 //
 std::vector<vkRenderableItem*> totalRIs;
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
-  pipeline.reset();
+  for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
+    pipelines[i].reset();
+  }
+  // pipeline.reset();
   renderPass.reset();
   swapchain.reset();
 
@@ -40,24 +44,40 @@ void RebuildSwapChain() {
   renderPass = createRenderPass(ctx->device, swapchain->swapChainImageFormat);
   swapchain->InitFramebuffers(*renderPass);
 
-  pipeline = std::make_unique<Pipeline>(ctx->device, swapchain->swapChainExtent, *renderPass, Vertex::getPipelineInputState(),
-                                        descriptorSetLayout->descriptorSetLayout);
-
-  uniform = std::make_unique<Uniform>(swapchain->swapChainFramebuffers.size(), ctx->device, ctx->physicalDevice);
   descriptorPool = std::make_unique<DescriptorPool>(ctx->device, swapchain->swapChainImages);
-  descriptorSets =
-      std::make_unique<DescriptorSets>(ctx->device, swapchain->swapChainImages, descriptorSetLayout->descriptorSetLayout,
-                                       descriptorPool->descriptorPool, uniform->uniformBuffers, texture->_imageView, texture->_imageSampler);
+
+  // Make pipleines
+  for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
+    switch (i) {
+    case RenderableItem::lit: {
+      auto pl = std::make_unique<vLitPipeline>(ctx->device, swapchain->swapChainExtent, *renderPass);
+      pl->generatePipelineResources(ctx->physicalDevice, swapchain->swapChainImages, swapchain->swapChainFramebuffers, descriptorPool->descriptorPool,
+                                    cmdPool->commandPool, ctx->graphicsQueue);
+      pipelines[i] = std::move(pl);
+      break;
+    }
+    default:
+      // pipelines[i] = std::make_unique<Pipeline>(ctx->device, swapchain->swapChainExtent, *renderPass, Vertex::getPipelineInputState(),
+      // descriptorSetLayout->descriptorSetLayout);
+      break;
+    }
+  }
+
+  // uniform = std::make_unique<Uniform>(swapchain->swapChainFramebuffers.size(), ctx->device, ctx->physicalDevice);
+
+  //  descriptorSets =
+  //      std::make_unique<DescriptorSets>(ctx->device, swapchain->swapChainImages, descriptorSetLayout->descriptorSetLayout,
+  //                                       descriptorPool->descriptorPool, uniform->uniformBuffers, texture->_imageView, texture->_imageSampler);
   std::cout << "swapchain Built" << std::endl;
 }
 
 void VulkanBackend::startup() {
   ctx = std::make_unique<ContextInfo>();
   cmdPool = std::make_unique<CmdPool>(ctx->deviceKHR, ctx->device);
-  descriptorSetLayout = std::make_unique<vLitPipeline_DescriptorSetLayout>(ctx->device);
+  // descriptorSetLayout = std::make_unique<vLitPipeline_DescriptorSetLayout>(ctx->device);
 
   // Textures
-  texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);
+  // texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);
 
   RebuildSwapChain();
 
@@ -72,15 +92,17 @@ void VulkanBackend::shutdown() {
   descriptorPool.reset();
   syncObjects.reset();
   cmdBuffers.reset();
-  uniform.reset();
-  pipeline.reset();
+  // uniform.reset();
+  for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
+    pipelines[i].reset();
+  }
   renderPass.reset();
   swapchain.reset();
 
-  texture.reset();
+  // texture.reset();
   //  vbuffer.reset();
   cmdPool.reset();
-  descriptorSetLayout.reset();
+  // descriptorSetLayout.reset();
 
   ctx.reset();
 }
@@ -97,12 +119,29 @@ void VulkanBackend::drawFrame(double dt) {
     }
   }
 
+  for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
+    switch (i) {
+    case RenderableItem::lit: {
+      static_cast<vLitPipeline*>(pipelines[i].get())->UpdateGlobalUniform(a);
+    }
+    default:
+      break;
+    }
+  }
+
   for (int i = 0; i < totalRIs.size(); ++i) {
     vkRenderableItem& ri = *totalRIs[i];
     ri.updateUniform();
-    uniform->updateUniformBuffer(a, swapchain->swapChainExtent, ri._uniformData);
-    cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipeline, *ri._vbuffer, ri._icount,
-                       *descriptorSets, a);
+    // uniform->updateUniformBuffer(a, swapchain->swapChainExtent, ri._uniformData);
+    // auto aa = Pipeline::BindReleventDescriptor;
+    // auto ab = [&ri, ] { return *pipelines[ri._pipeline] };
+    //  auto f3 = std::bind(&Pipeline::BindReleventDescriptor, &pipelines[ri._pipeline], std::placeholders::_1);
+    std::function<void(const vk::CommandBuffer&)> f4 = [&ri, a](const vk::CommandBuffer& c) {
+      pipelines[ri._pipeline]->BindReleventDescriptor(c, a);
+    };
+    // aa(void);
+    cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[ri._pipeline], *ri._vbuffer,
+                       ri._icount, f4, a);
   }
 
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);

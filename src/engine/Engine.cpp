@@ -18,8 +18,6 @@ const double TARGET_DT = 1.0 / 30.0;
 size_t delay = 0;
 void baa(double a) {}
 
-
-
 void Engine::Startup() {}
 
 void Engine::OpenWindow(int w, int h) { platform::init(w, h); }
