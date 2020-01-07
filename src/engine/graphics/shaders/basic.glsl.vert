@@ -4,8 +4,8 @@
 layout(binding = 0) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
-  vec3 lightDir;
-  vec3 pointLight;
+  vec4 lightDir;
+  vec4 pointLight;
 }
 gubo;
 
@@ -27,34 +27,33 @@ layout(location = 3) out vec3 outBarry;
 layout(location = 4) out vec3 fragVert;
 flat layout(location = 5) out vec3 outNormal;
 
-
 void main() {
-    fragVert = inPosition;
-    outNormal = inNormal;
+  fragVert = inPosition;
+  outNormal = inNormal;
 
-    gl_Position = mubo.mvp * vec4(inPosition, 1.0);
+  gl_Position = mubo.mvp * vec4(inPosition, 1.0);
 
-    outBarry = inBarry;
-    // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));
-    // vec3 lightDir = normalize(vec3(0,0,1.f));
-    // intensity = dot(normalize(inNormal), gubo.lightDir);
-    intensity = 1;
-    /*
-    int tri = gl_VertexIndex % 3;
-    switch(tri){
-    case 0:
-    tileColour = vec3(1,0,0);
-    break;
-    case 1:
-    tileColour = vec3(0,1,0);
-    break;
-    case 2:
-    tileColour = vec3(0,0,1);
-    break;
+  outBarry = inBarry;
+  // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));
+  // vec3 lightDir = normalize(vec3(0,0,1.f));
+  // intensity = dot(normalize(inNormal), gubo.lightDir);
+  intensity = 1;
+  /*
+  int tri = gl_VertexIndex % 3;
+  switch(tri){
+  case 0:
+  tileColour = vec3(1,0,0);
+  break;
+  case 1:
+  tileColour = vec3(0,1,0);
+  break;
+  case 2:
+  tileColour = vec3(0,0,1);
+  break;
 
-    }*/
-    tileColour = inColor;
-    //  tileColour = inNormal;
-    //intensity = 1.0;
-    fragTexCoord = vec2(inPosition.x, inPosition.y);
+  }*/
+  tileColour = inColor;
+  //  tileColour = inNormal;
+  // intensity = 1.0;
+  fragTexCoord = vec2(inPosition.x, inPosition.y);
 }

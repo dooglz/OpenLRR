@@ -11,8 +11,6 @@
 #include <iostream>
 #include <vulkan/vulkan.hpp>
 
-// info->
-
 std::unique_ptr<ContextInfo> ctx;
 std::unique_ptr<SwapChainInfo> swapchain;
 vk::UniqueRenderPass renderPass;
@@ -61,13 +59,7 @@ void RebuildSwapChain() {
 void VulkanBackend::startup() {
   ctx = std::make_unique<ContextInfo>();
   cmdPool = std::make_unique<CmdPool>(ctx->deviceKHR, ctx->device);
-  // descriptorSetLayout = std::make_unique<vLitPipeline_DescriptorSetLayout>(ctx->device);
-
-  // Textures
-  // texture = std::make_unique<TextureImage>(ctx->device, ctx->physicalDevice, cmdPool->commandPool, ctx->graphicsQueue);
-
   RebuildSwapChain();
-
   // Unless the amount of swapchain images changes, don't need to rebuild this when swapchain does.
   syncObjects = std::make_unique<SyncObjects>(ctx->device, swapchain->swapChainImages.size());
   cmdBuffers = std::make_unique<CmdBuffers>(ctx->device, cmdPool->commandPool, swapchain->swapChainFramebuffers.size());
@@ -104,7 +96,7 @@ void VulkanBackend::drawFrame(double dt) {
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
     switch (i) {
     case RenderableItem::lit: {
-   //   static_cast<vLitPipeline*>(pipelines[i].get())->UpdateGlobalUniform(a);
+      static_cast<vLitPipeline*>(pipelines[i].get())->UpdateGlobalUniform(a);
     }
     default:
       break;
@@ -116,12 +108,10 @@ void VulkanBackend::drawFrame(double dt) {
     if (ri._pipeline == RenderableItem::lit) {
       static_cast<vLitPipeline*>(pipelines[i].get())->UpdateModelUniform(a);
     }
-    //ri.updateUniform();
 
     std::function<void(const vk::CommandBuffer&)> f4 = [&ri, a](const vk::CommandBuffer& c) {
       pipelines[ri._pipeline]->BindReleventDescriptor(c, a);
     };
-
 
     cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[ri._pipeline], *ri._vbuffer,
                        ri._icount, f4, a);
@@ -179,13 +169,15 @@ vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::u
   _vbuffer->UploadVertex(&convertedVertexes[0], vertices_size, cmdPool->commandPool, ctx->graphicsQueue);
   _vbuffer->UploadIndex(indices, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 }
+
 void vkRenderableItem::setUniformModelMatrix(glm::mat4 m) {
+
   //_uniformData.model = m;
-//  _uniformData.mvp = _uniformData.proj * _uniformData.view * m;
+  //  _uniformData.mvp = _uniformData.proj * _uniformData.view * m;
 }
 void vkRenderableItem::updateUniform() {
-// _uniformData.view = Engine::getViewMatrix();
-// _uniformData.proj = Engine::getProjectionMatrix();
-// setUniformModelMatrix(_uniformData.model);
-// _uniformData.pointLight = Engine::getLightPos();
+  // _uniformData.view = Engine::getViewMatrix();
+  // _uniformData.proj = Engine::getProjectionMatrix();
+  // setUniformModelMatrix(_uniformData.model);
+  // _uniformData.pointLight = Engine::getLightPos();
 }

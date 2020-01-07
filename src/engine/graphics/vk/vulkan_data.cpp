@@ -45,7 +45,10 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties, pdevice);
   vk::DeviceMemory devmem = device.allocateMemory(allocInfo);
-  vkBindBufferMemory(device, buffer, devmem, 0);
+  // vkBindBufferMemory(device, buffer, devmem, 0);
+  std::cout << "Buffer created on device, Size: " << memRequirements.size << std::endl;
+
+  device.bindBufferMemory(buffer, devmem, 0);
   return devmem;
 }
 
@@ -144,6 +147,7 @@ Uniform::Uniform(size_t uboSize, size_t qty, const vk::Device& device, const vk:
     uniformBuffersMemory[i] = AllocateBufferOnDevice(
         device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
   }
+  std::cout << "Created new set of " << _qty << " uniforms of size: " << _size << std::endl;
 }
 
 Uniform::~Uniform() {
@@ -153,8 +157,8 @@ Uniform::~Uniform() {
   }
 }
 void Uniform::updateUniformBuffer(uint32_t currentImage, const void* uboData) {
-  void* data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, _size);
-  memcpy(data, &uboData, _size);
+  auto data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
+  memcpy(data, uboData, _size);
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
@@ -172,14 +176,14 @@ vLitPipeline_DescriptorSetLayout::vLitPipeline_DescriptorSetLayout(const vk::Dev
 
 const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayout::_generate() {
   vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
-  globalUboLayoutBinding.binding = 0;
+  globalUboLayoutBinding.binding = vLIT_GLOBAL_UBO_BINDING;
   globalUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
   globalUboLayoutBinding.descriptorCount = 1;
   globalUboLayoutBinding.pImmutableSamplers = nullptr;
   globalUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 
   vk::DescriptorSetLayoutBinding modelUboLayoutBinding;
-  modelUboLayoutBinding.binding = 1;
+  modelUboLayoutBinding.binding = vLIT_MODEL_UBO_BINDING;
   modelUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
   modelUboLayoutBinding.descriptorCount = 1;
   modelUboLayoutBinding.pImmutableSamplers = nullptr;
@@ -187,7 +191,7 @@ const std::vector<vk::DescriptorSetLayoutBinding> vLitPipeline_DescriptorSetLayo
 
   // for image sampler
   vk::DescriptorSetLayoutBinding samplerLayoutBinding;
-  samplerLayoutBinding.binding = 2;
+  samplerLayoutBinding.binding = vLIT_IMAGE_UBO_BINDING;
   samplerLayoutBinding.descriptorCount = 1;
   samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
   samplerLayoutBinding.pImmutableSamplers = nullptr;
@@ -203,13 +207,13 @@ DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::I
   poolSize.type = vk::DescriptorType::eUniformBuffer;
   poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
-  std::array<vk::DescriptorPoolSize, 3> poolSizes = {};
-  poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
-  poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
-  poolSizes[1].type = vk::DescriptorType::eUniformBuffer;
-  poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
-  poolSizes[2].type = vk::DescriptorType::eCombinedImageSampler;
-  poolSizes[2].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  std::array<vk::DescriptorPoolSize, VLIT_BINDINGS_COUNT> poolSizes = {};
+  poolSizes[vLIT_GLOBAL_UBO_BINDING].type = vk::DescriptorType::eUniformBuffer;
+  poolSizes[vLIT_GLOBAL_UBO_BINDING].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[vLIT_MODEL_UBO_BINDING].type = vk::DescriptorType::eUniformBuffer;
+  poolSizes[vLIT_MODEL_UBO_BINDING].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[vLIT_IMAGE_UBO_BINDING].type = vk::DescriptorType::eCombinedImageSampler;
+  poolSizes[vLIT_IMAGE_UBO_BINDING].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
   vk::DescriptorPoolCreateInfo poolInfo;
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
@@ -220,7 +224,7 @@ DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::I
 
 DescriptorPool::~DescriptorPool() { _logicalDevice.destroyDescriptorPool(descriptorPool); }
 
-DescriptorSets::DescriptorSets(const vk::Device& device): _logicalDevice(device) {}
+DescriptorSets::DescriptorSets(const vk::Device& device) : _logicalDevice(device) {}
 
 DescriptorSets::~DescriptorSets() {}
 
@@ -228,57 +232,56 @@ vLitPipeline_DescriptorSet::vLitPipeline_DescriptorSet(const vk::Device& device,
                                                        const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
                                                        const std::vector<vk::Buffer>& globalUniformBuffers,
                                                        const std::vector<vk::Buffer>& modelUniformBuffers, const vk::ImageView& textureImageView,
-                                                       const vk::Sampler& textureSampler): DescriptorSets(device) 
-  {
+                                                       const vk::Sampler& textureSampler)
+    : DescriptorSets(device) {
 
-            
   std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
-    vk::DescriptorSetAllocateInfo allocInfo;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
-    allocInfo.pSetLayouts = layouts.data();
+  vk::DescriptorSetAllocateInfo allocInfo;
+  allocInfo.descriptorPool = descriptorPool;
+  allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+  allocInfo.pSetLayouts = layouts.data();
 
-    descriptorSets = device.allocateDescriptorSets(allocInfo);
+  descriptorSets = device.allocateDescriptorSets(allocInfo);
 
-    for (size_t i = 0; i < swapChainImages.size(); i++) {
+  for (size_t i = 0; i < swapChainImages.size(); i++) {
 
-      vk::DescriptorBufferInfo bufferInfo1 = {};
-      bufferInfo1.buffer = globalUniformBuffers[i];
-      bufferInfo1.offset = 0;
-      bufferInfo1.range = sizeof(vLit_global_UniformBufferObject);
-      vk::DescriptorBufferInfo bufferInfo2 = {};
-      bufferInfo2.buffer = modelUniformBuffers[i];
-      bufferInfo2.offset = 0;
-      bufferInfo2.range = sizeof(vLit_object_UniformBufferObject);
+    vk::DescriptorBufferInfo bufferInfo1 = {};
+    bufferInfo1.buffer = globalUniformBuffers[i];
+    bufferInfo1.offset = 0;
+    bufferInfo1.range = sizeof(vLit_global_UniformBufferObject);
+    vk::DescriptorBufferInfo bufferInfo2 = {};
+    bufferInfo2.buffer = modelUniformBuffers[i];
+    bufferInfo2.offset = 0;
+    bufferInfo2.range = sizeof(vLit_object_UniformBufferObject);
 
-      vk::DescriptorImageInfo imageInfo = {};
-      imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-      imageInfo.imageView = textureImageView;
-      imageInfo.sampler = textureSampler;
+    vk::DescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    imageInfo.imageView = textureImageView;
+    imageInfo.sampler = textureSampler;
 
-      std::array<vk::WriteDescriptorSet, 3> descriptorWrites = {};
-      descriptorWrites[0].dstSet = descriptorSets[i];
-      descriptorWrites[0].dstBinding = 0;
-      descriptorWrites[0].dstArrayElement = 0;
-      descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-      descriptorWrites[0].descriptorCount = 1;
-      descriptorWrites[0].pBufferInfo = &bufferInfo1;
-      descriptorWrites[1].dstSet = descriptorSets[i];
-      descriptorWrites[1].dstBinding = 1;
-      descriptorWrites[1].dstArrayElement = 0;
-      descriptorWrites[1].descriptorType = vk::DescriptorType::eUniformBuffer;
-      descriptorWrites[1].descriptorCount = 1;
-      descriptorWrites[1].pBufferInfo = &bufferInfo2;
-      descriptorWrites[2].dstSet = descriptorSets[i];
-      descriptorWrites[2].dstBinding = 2;
-      descriptorWrites[2].dstArrayElement = 0;
-      descriptorWrites[2].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-      descriptorWrites[2].descriptorCount = 1;
-      descriptorWrites[2].pImageInfo = &imageInfo;
+    std::array<vk::WriteDescriptorSet, VLIT_BINDINGS_COUNT> descriptorWrites = {};
+    descriptorWrites[vLIT_GLOBAL_UBO_BINDING].dstSet = descriptorSets[i];
+    descriptorWrites[vLIT_GLOBAL_UBO_BINDING].dstBinding = 0;
+    descriptorWrites[vLIT_GLOBAL_UBO_BINDING].dstArrayElement = 0;
+    descriptorWrites[vLIT_GLOBAL_UBO_BINDING].descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrites[vLIT_GLOBAL_UBO_BINDING].descriptorCount = 1;
+    descriptorWrites[vLIT_GLOBAL_UBO_BINDING].pBufferInfo = &bufferInfo1;
+    descriptorWrites[vLIT_MODEL_UBO_BINDING].dstSet = descriptorSets[i];
+    descriptorWrites[vLIT_MODEL_UBO_BINDING].dstBinding = 1;
+    descriptorWrites[vLIT_MODEL_UBO_BINDING].dstArrayElement = 0;
+    descriptorWrites[vLIT_MODEL_UBO_BINDING].descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrites[vLIT_MODEL_UBO_BINDING].descriptorCount = 1;
+    descriptorWrites[vLIT_MODEL_UBO_BINDING].pBufferInfo = &bufferInfo2;
+    descriptorWrites[vLIT_IMAGE_UBO_BINDING].dstSet = descriptorSets[i];
+    descriptorWrites[vLIT_IMAGE_UBO_BINDING].dstBinding = 2;
+    descriptorWrites[vLIT_IMAGE_UBO_BINDING].dstArrayElement = 0;
+    descriptorWrites[vLIT_IMAGE_UBO_BINDING].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    descriptorWrites[vLIT_IMAGE_UBO_BINDING].descriptorCount = 1;
+    descriptorWrites[vLIT_IMAGE_UBO_BINDING].pImageInfo = &imageInfo;
 
-      device.updateDescriptorSets(descriptorWrites, nullptr);
-    }
+    device.updateDescriptorSets(descriptorWrites, nullptr);
   }
+}
 
 TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue)
     : _logicalDevice(device), _physicalDevice(pdevice), _pool(pool), _queue(queue) {

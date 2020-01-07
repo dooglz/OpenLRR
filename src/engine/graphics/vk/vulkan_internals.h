@@ -22,17 +22,17 @@ struct UniformBufferObject {
   glm::vec3 pointLight;
 };
 */
+
 struct vLit_global_UniformBufferObject {
   glm::mat4 view;
   glm::mat4 proj;
-  glm::vec3 lightDir;
-  glm::vec3 pointLight;
+  glm::vec4 lightDir;
+  glm::vec4 pointLight;
 };
 
 struct vLit_object_UniformBufferObject {
-  alignas(16) glm::mat4 model;
-  alignas(16) glm::mat4 mvp;
-
+  glm::mat4 model;
+  glm::mat4 mvp;
 };
 
 const bool ENABLE_VSYNC = false;
@@ -225,7 +225,6 @@ struct vLitPipeline_DescriptorSet : public DescriptorSets {
                              const std::vector<vk::Buffer>& globalUniformBuffers, const std::vector<vk::Buffer>& modelUniformBuffers,
                              const vk::ImageView& textureImageView, const vk::Sampler& textureSampler);
 };
-
 
 struct CmdBuffers {
   std::vector<vk::CommandBuffer> commandBuffers;

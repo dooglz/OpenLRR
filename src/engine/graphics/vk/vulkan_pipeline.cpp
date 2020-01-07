@@ -8,9 +8,9 @@
 
 #include "../../Engine.h"
 #include <fstream>
+#include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
-
 VkShaderModule createShaderModule(const std::vector<char>& code, const vk::Device& device) {
   VkShaderModuleCreateInfo createInfo = {};
   createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -47,9 +47,10 @@ static std::vector<char> readFile(const std::string& filename) {
 Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
                    const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout)
     : _logicalDevice{device} {
-  auto vertShaderCode = readFile("res/shaders/basic.vert.spv");
-  auto fragShaderCode = readFile("res/shaders/basic.frag.spv");
-  ;
+  const std::string shaderName = "basic";
+  auto vertShaderCode = readFile("res/shaders/" + shaderName + ".vert.spv");
+  auto fragShaderCode = readFile("res/shaders/" + shaderName + ".frag.spv");
+
   VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, device);
   VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, device);
 
@@ -64,11 +65,6 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   fragShaderStageInfo.pName = "main";
 
   vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-  // VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-  // vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  // vertexInputInfo.vertexBindingDescriptionCount = 0;
-  // vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
   vk::PipelineInputAssemblyStateCreateInfo inputAssembly = {};
   inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -97,7 +93,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   rasterizer.rasterizerDiscardEnable = VK_FALSE;
   rasterizer.polygonMode = vk::PolygonMode::eFill;
   // rasterizer.polygonMode = vk::PolygonMode::eLine;
-  rasterizer.lineWidth = 2.0f;
+  rasterizer.lineWidth = 1.0f;
   rasterizer.cullMode = vk::CullModeFlagBits::eBack;
   // rasterizer.cullMode = vk::CullModeFlagBits::eNone;
   rasterizer.frontFace = vk::FrontFace::eClockwise;
@@ -149,7 +145,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   pipelineInfo.subpass = 0;
 
   graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineInfo);
-  std::cout << "Pipeline is cool" << std::endl;
+  std::cout << "Pipeline created, Shader: " << shaderName << std::endl;
 
   vkDestroyShaderModule(device, fragShaderModule, nullptr);
   vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -209,7 +205,7 @@ void SwapChainInfo::InitFramebuffers(const vk::RenderPass& renderPass) {
 
     swapChainFramebuffers[i] = _logicalDevice.createFramebuffer(framebufferInfo);
   }
-  std::cout << "framebuffer is cool" << std::endl;
+  std::cout << swapChainImageViews.size() << " framebuffers created" << std::endl;
 }
 
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync) {
@@ -302,7 +298,8 @@ void vLitPipeline::UpdateGlobalUniform(uint32_t index) {
   vLit_global_UniformBufferObject uniformData = {};
   uniformData.view = Engine::getViewMatrix();
   uniformData.proj = Engine::getProjectionMatrix();
-  uniformData.pointLight = Engine::getLightPos();
+  uniformData.pointLight = glm::vec4(Engine::getLightPos(), 0);
+  uniformData.lightDir = glm::vec4(0.0f);
   _globalUniform->updateUniformBuffer(index, &uniformData);
 }
 

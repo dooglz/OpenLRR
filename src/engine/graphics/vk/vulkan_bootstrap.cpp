@@ -451,7 +451,7 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
   swapChainImages = logicalDevice.getSwapchainImagesKHR(swapChain);
   swapChainImageFormat = surfaceFormat.format;
   swapChainExtent = extent;
-  std::cout << "Swap Chain is cool: " << swapChainExtent.height << "x" << swapChainExtent.width << std::endl;
+  std::cout << "Swap Chain is created: " << swapChainExtent.height << "x" << swapChainExtent.width << ", Images: " << swapChainImages.size()<< std::endl;
 
   return swapChain;
 }
@@ -483,7 +483,7 @@ std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image>& swapCh
 SwapChainInfo::SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice)
     : swapChain{createSwapChain(pds, logicalDevice, swapChainImages, swapChainImageFormat, swapChainExtent)},
       swapChainImageViews{createImageViews(swapChainImages, swapChainImageFormat, logicalDevice)}, _logicalDevice{logicalDevice} {
-  std::cout << "SWAP CHAIN COOL" << std::endl;
+  std::cout << swapChainImages.size() << " Image Views Created " << std::endl;
 }
 
 SwapChainInfo::~SwapChainInfo() {

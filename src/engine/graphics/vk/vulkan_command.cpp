@@ -16,16 +16,7 @@ void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const 
   cmdBuffer.bindVertexBuffers(0, vbuf.vertexBuffer, {0});
   cmdBuffer.bindIndexBuffer(vbuf.indexBuffer, 0, vk::IndexType::eUint16);
   descriptorSetFunc(cmdBuffer);
-  /*
-  cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout,
-                               0, // first set
-                               descriptorSet,
-                               nullptr // dynamicOffsets
-  );
-  */
   vkCmdDrawIndexed(cmdBuffer, count, 1, 0, 0, 0);
-
-  // vkCmdDraw(cmdBuffer, count, 1, 0, 0);
 }
 
 template <typename T, typename... Rest> void hash_combine(std::size_t& seed, const T& v, const Rest&... rest) {
