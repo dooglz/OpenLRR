@@ -11,16 +11,44 @@ matrix:
       dist: bionic
       compiler: gcc
       env: BADGE=linuxgcc
+    - os: osx
+      osx_image: xcode11.3
+      env: BADGE=osx
+    - os: windows
+      env: BADGE=windows
 before_script:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y  libx11-xcb-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
   - export VK_VERSION=1.1.126.0
-  - wget -O vulkansdk-linux-x86_64-$VK_VERSION.tar.gz https://sdk.lunarg.com/sdk/download/$VK_VERSION/linux/vulkansdk-linux-x86_64-$VK_VERSION.tar.gz
-  - tar zxf vulkansdk-linux-x86_64-$VK_VERSION.tar.gz
-  - export VULKAN_SDK=$TRAVIS_BUILD_DIR/$VK_VERSION/x86_64
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      sudo apt-get -qq update;
+      sudo apt-get install -y  libx11-xcb-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev;
+      curl -L --silent --show-error --output vulkansdk-linux-x86_64-$VK_VERSION.tar.gz https://sdk.lunarg.com/sdk/download/$VK_VERSION/linux/vulkansdk-linux-x86_64-$VK_VERSION.tar.gz?Human=true ;
+      tar zxf vulkansdk-linux-x86_64-$VK_VERSION.tar.gz;
+      export VULKAN_SDK=$TRAVIS_BUILD_DIR/$VK_VERSION/x86_64;
+   fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+       curl -L --silent --show-error --output vulkansdk-macos-$VK_VERSION.tar.gz https://sdk.lunarg.com/sdk/download/$VK_VERSION/mac/vulkansdk-macos-$VK_VERSION.tar.gz?Human=true ;
+      tar zxf vulkansdk-macos-$VK_VERSION.tar.gz;
+      export VULKAN_SDK=$TRAVIS_BUILD_DIR/vulkansdk-macos-$VK_VERSION/macOS;
+   fi
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+      curl -L --silent --show-error --output VulkanSDK-$VK_VERSION-Installer.exe https://sdk.lunarg.com/sdk/download/$VK_VERSION/windows/VulkanSDK-$VK_VERSION-Installer.exe?Human=true ;
+      7z x ./VulkanSDK-$VK_VERSION-Installer.exe -ovulkansdk-windows-$VK_VERSION;
+      export VULKAN_SDK=$TRAVIS_BUILD_DIR/vulkansdk-windows-$VK_VERSION;
+   fi
+  - echo $VULKAN_SDK
+  - ls $VULKAN_SDK
 script:
-  - mkdir -p build && cd build && cmake ..
-  - cmake --build . --target OpenLRR --config Release -- -j4
+  - mkdir -p build && cd build
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then 
+      cmake -A x64 .. ;
+      cmake --build . --target OpenLRR --config Release; 
+   fi
+  - if [ "$TRAVIS_OS_NAME" != "windows" ]; then 
+     cmake .. ; 
+     cmake --build . --target OpenLRR --config Release -- -j4; 
+   fi
 cache:
   directories:
   - $VK_VERSION
+  - vulkansdk-macos-$VK_VERSION
+  - vulkansdk-windows-$VK_VERSION
