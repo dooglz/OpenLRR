@@ -483,7 +483,7 @@ std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image>& swapCh
 SwapChainInfo::SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice)
     : swapChain{createSwapChain(pds, logicalDevice, swapChainImages, swapChainImageFormat, swapChainExtent)},
       swapChainImageViews{createImageViews(swapChainImages, swapChainImageFormat, logicalDevice)}, _logicalDevice{logicalDevice} {
-  std::cout << swapChainImages.size() << " Image Views Created " << std::endl;
+  std::cout << "Swap chain Built, " << swapChainImages.size() << " Image Views Created " << std::endl;
 }
 
 SwapChainInfo::~SwapChainInfo() {

@@ -270,6 +270,13 @@ void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::
 vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
     : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), vLitPipeline_DescriptorSetLayout(device).descriptorSetLayout) {}
 
+  vLitPipeline::~vLitPipeline(){
+  _descriptorSets.reset();
+  _texture.reset();
+  _modelUniform.reset();
+  _globalUniform.reset();
+}
+
 void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, const std::vector<vk::Image>& swapChainImages,
                                              const std::vector<vk::Framebuffer>& swapChainFramebuffers, const vk::DescriptorPool& descriptorPool,
                                              const vk::CommandPool& pool, vk::Queue& queue) {

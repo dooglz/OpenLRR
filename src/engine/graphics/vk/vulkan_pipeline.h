@@ -16,7 +16,7 @@ struct Pipeline {
   vk::Pipeline graphicsPipeline;
   Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
            const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout);
-  ~Pipeline();
+  virtual ~Pipeline();
   virtual void BindReleventDescriptor(const vk::CommandBuffer& cmdbuff, uint32_t index){};
 
 protected:
@@ -32,7 +32,7 @@ public:
   void BindReleventDescriptor(const vk::CommandBuffer& cmdbuff, uint32_t index) override;
   void UpdateGlobalUniform(uint32_t index);
   void UpdateModelUniform(uint32_t index);
-
+  ~vLitPipeline();
 private:
   // const vk::DescriptorSetLayout _descriptorSetLayout;
   // std::unique_ptr<DescriptorSets> _descriptorSets;

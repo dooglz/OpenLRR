@@ -46,7 +46,7 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
   allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties, pdevice);
   vk::DeviceMemory devmem = device.allocateMemory(allocInfo);
   // vkBindBufferMemory(device, buffer, devmem, 0);
-  std::cout << "Buffer created on device, Size: " << memRequirements.size << std::endl;
+  std::cout << "Buffer created on device, Size: " << memRequirements.size << " " << devmem << std::endl;
 
   device.bindBufferMemory(buffer, devmem, 0);
   return devmem;
@@ -286,7 +286,8 @@ vLitPipeline_DescriptorSet::vLitPipeline_DescriptorSet(const vk::Device& device,
 TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue)
     : _logicalDevice(device), _physicalDevice(pdevice), _pool(pool), _queue(queue) {
   int texWidth, texHeight, texChannels;
-  stbi_uc* pixels = stbi_load("res/gravel09_col_sm.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  const std::string imagename = "gravel09_col_sm.jpg";
+  stbi_uc* pixels = stbi_load(std::string("res/"+imagename).c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
   VkDeviceSize imageSize = texWidth * texHeight * 4;
 
   if (!pixels) {
@@ -304,6 +305,8 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
 
   stbi_image_free(pixels);
 
+
+  std::cout << "Loaded image: "<<imagename << " " <<texWidth << "x" << texHeight << " size:" << imageSize << std::endl;
   createImage(pdevice, texWidth, texHeight, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal,
               vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, _image,
               _imageMemory);

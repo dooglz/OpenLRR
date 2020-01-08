@@ -53,7 +53,7 @@ void RebuildSwapChain() {
     }
   }
 
-  std::cout << "swapchain Built" << std::endl;
+  std::cout << "swapchain re-Built" << std::endl;
 }
 
 void VulkanBackend::startup() {
@@ -71,7 +71,6 @@ void VulkanBackend::shutdown() {
   descriptorPool.reset();
   syncObjects.reset();
   cmdBuffers.reset();
-  // uniform.reset();
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
     pipelines[i].reset();
   }
