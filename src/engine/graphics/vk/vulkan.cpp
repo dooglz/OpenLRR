@@ -126,20 +126,20 @@ void VulkanBackend::resize() {
 }
 
 vkRenderableItem::~vkRenderableItem() { _vbuffer.reset(); }
-void vkRenderableItem::updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) {}
+void vkRenderableItem::updateData(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount) {}
 
-vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, RenderableItem::PIPELINE p)
+vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount, RenderableItem::PIPELINE p)
     : RenderableItem(vertices, vcount, indices, icount, p) {
   totalRIs.push_back(this);
 
   std::vector<Vertex> convertedVertexes;
   size_t barrychuckle = 0;
 
-  for (int j = 0; j < _vcount; ++j) {
+  for (uint32_t j = 0; j < _vcount; ++j) {
     convertedVertexes.push_back(vertices[j]);
   }
 
-  for (int j = 0; j < _icount; ++j) {
+  for (uint32_t j = 0; j < _icount; ++j) {
     switch (barrychuckle % 6) {
     case 2:
       convertedVertexes[indices[j]].barry = glm::vec3(1, 0, 0);

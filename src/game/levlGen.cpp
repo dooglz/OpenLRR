@@ -190,14 +190,14 @@ std::array<Tile, levelSize * levelSize> Level::Generate() {
   for (int i = 0; i < levelSize; ++i) {
     for (int j = 0; j < levelSize; ++j) {
       Tile& t = tiles[j + (i * levelSize)];
-      t.height = noiseToVal(0, 5, noise.GetPerlin(i, j));
+      t.height = noiseToVal(0, 5, noise.GetPerlin((float)i, (float)j));
       if (i == 0 || j == 0 || i == (levelSize - 1) || j == (levelSize - 1)) {
         t.type = Tile::rock;
         t.rockType = Tile::solid;
       } else if (t.height == 0) {
         t.type = Tile::water;
       } else {
-        uint8_t rval = noiseToVal(0, Tile::RockTypesCount, noise2.GetCellular(i, j));
+        uint8_t rval = noiseToVal(0, Tile::RockTypesCount, noise2.GetCellular((float)i, (float)j));
         if (rval == 0) {
           t.type = Tile::rock;
           t.rockType = Tile::solid;

@@ -2,7 +2,7 @@
 // Created by Sam Serrels on 07/12/2019.
 //
 #pragma once
-
+#pragma warning(disable : 26812)
 #include <array>
 #include <cmath>
 #include <glm/glm.hpp>

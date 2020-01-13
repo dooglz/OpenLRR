@@ -13,8 +13,8 @@ std::unique_ptr<RenderableItem> levelRI;
 void Game::StartUp() {
 
   level = std::make_unique<Game::Level>();
-  levelRI =
-      std::make_unique<vkRenderableItem>(&level->_verts[0], level->_verts.size(), &level->_inidces[0], level->_inidces.size(), RenderableItem::lit);
+  levelRI = std::make_unique<vkRenderableItem>(&level->_verts[0], static_cast<uint32_t>(level->_verts.size()), &level->_inidces[0],
+                                               static_cast<uint32_t>(level->_inidces.size()), RenderableItem::lit);
   levelRI->setUniformModelMatrix(glm::mat4(1.0f));
 }
 

@@ -165,7 +165,7 @@ void Uniform::updateUniformBuffer(uint32_t currentImage, const void* uboData) {
 DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings)
     : _logicalDevice(device) {
   vk::DescriptorSetLayoutCreateInfo layoutInfo;
-  layoutInfo.bindingCount = bindings.size();
+  layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
   layoutInfo.pBindings = bindings.data();
   descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
 }

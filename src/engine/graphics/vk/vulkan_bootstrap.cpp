@@ -1,7 +1,6 @@
 //
 // Created by Sam Serrels on 30/11/2019.
 //
-#define NOMINMAX
 #include "../../platform/platform_glfw.h"
 #include "vulkan_internals.h"
 #include <cmath>
@@ -34,7 +33,7 @@ static std::string BytesToString(unsigned long long byteCount) {
   std::string suf[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB"}; // Longs run out around EB
   if (byteCount == 0)
     return "0" + suf[0];
-  int place = (floor(log(byteCount) / log(1024)));
+  int place = (int)(floor(log(byteCount) / log(1024)));
   double a = (byteCount / pow(1024, place));
   const int precisionVal = 3;
   const std::string trimmedString = std::to_string(a).substr(0, std::to_string(a).find(".") + precisionVal + 1);
@@ -42,7 +41,6 @@ static std::string BytesToString(unsigned long long byteCount) {
 }
 
 void probe() {
-  VkInstance pinstance;
   VkResult result;
   VkInstanceCreateInfo info = {};
   uint32_t instance_layer_count;
@@ -52,7 +50,7 @@ void probe() {
   if (instance_layer_count > 0) {
     std::unique_ptr<VkLayerProperties[]> instance_layers(new VkLayerProperties[instance_layer_count]);
     result = vkEnumerateInstanceLayerProperties(&instance_layer_count, instance_layers.get());
-    for (int i = 0; i < instance_layer_count; ++i) {
+    for (uint32_t i = 0; i < instance_layer_count; ++i) {
       std::cout << instance_layers[i].layerName << "\n";
     }
   }
@@ -339,11 +337,11 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
   }
 
   std::cout << "Enabled Layers:" << std::endl;
-  for (int i = 0; i < instanceCreateInfo.enabledLayerCount; ++i) {
+  for (uint32_t i = 0; i < instanceCreateInfo.enabledLayerCount; ++i) {
     std::cout << instanceCreateInfo.ppEnabledLayerNames[i] << "\n";
   }
   std::cout << "Enabled Extensions:" << std::endl;
-  for (int i = 0; i < instanceCreateInfo.enabledExtensionCount; ++i) {
+  for (uint32_t i = 0; i < instanceCreateInfo.enabledExtensionCount; ++i) {
     std::cout << instanceCreateInfo.ppEnabledExtensionNames[i] << "\n";
   }
   return instance;
@@ -451,7 +449,8 @@ VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::
   swapChainImages = logicalDevice.getSwapchainImagesKHR(swapChain);
   swapChainImageFormat = surfaceFormat.format;
   swapChainExtent = extent;
-  std::cout << "Swap Chain is created: " << swapChainExtent.height << "x" << swapChainExtent.width << ", Images: " << swapChainImages.size()<< std::endl;
+  std::cout << "Swap Chain is created: " << swapChainExtent.height << "x" << swapChainExtent.width << ", Images: " << swapChainImages.size()
+            << std::endl;
 
   return swapChain;
 }

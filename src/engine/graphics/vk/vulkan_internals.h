@@ -101,7 +101,7 @@ template <class T> struct VertexDataFormat {
     static vk::PipelineVertexInputStateCreateInfo a(vk::PipelineVertexInputStateCreateFlags(), // PipelineVertexInputStateCreateFlags
                                                     1,                                         // vertexBindingDescriptionCount
                                                     T::getBindingDescription(),                // VertexInputBindingDescription
-                                                    T::getAttributeDescriptions()->size(),     // vertexAttributeDescriptionCount
+                                                    static_cast<uint32_t> (T::getAttributeDescriptions()->size()), // vertexAttributeDescriptionCount
                                                     T::getAttributeDescriptions()->data()      // VertexInputAttributeDescription
     );
     int ff = 4;

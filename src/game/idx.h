@@ -10,17 +10,22 @@
 #include <vector>
 
 namespace Game {
-struct idx {
+
+struct idx_signed {
   long long x, y;
+};
+    
+struct idx {
+  size_t x, y;
 
   double dist(const idx& a);
   bool surround(const idx& a) const;
   bool adjacent(const idx& a) const;
 
-  static std::vector<Game::idx> getAdjTiles(long long a, long long b, size_t s);
+  static std::vector<Game::idx> getAdjTiles(size_t a, size_t b, size_t s);
   static std::vector<Game::idx> getAdjTiles(const idx& a, size_t s);
   std::vector<Game::idx> getAdjTiles(size_t s) const;
-  static std::vector<Game::idx> getSurTiles(long long a, long long b, size_t s);
+  static std::vector<Game::idx> getSurTiles(size_t a, size_t b, size_t s);
   static std::vector<Game::idx> getSurTiles(const idx& a, size_t s);
   std::vector<Game::idx> getSurTiles(size_t s) const;
   static std::vector<Game::idx> getTouchingTilesForVert(const idx& p, const unsigned char& vert);
@@ -32,7 +37,8 @@ struct idx {
   }
 
   idx() : x{0}, y{0} {};
-
+  idx(size_t a, size_t b) : x{a}, y{b} {};
+  /*
   idx(long long a, long long b) : x{a}, y{b} {};
   idx(size_t a, size_t b) {
     if (a > std::numeric_limits<long long>::max() || b > std::numeric_limits<long long>::max()) {
@@ -41,9 +47,9 @@ struct idx {
     x = static_cast<long long>(a);
     y = static_cast<long long>(b);
   };
-
+  
   idx(int a, int b) : x{(long long)a}, y{(long long)b} {};
-
+  */
   bool operator==(const idx& a) { return a.x == x && a.y == y; }
   bool operator!=(const idx& a) { return a.x != x || a.y != y; }
   idx& operator+=(const idx& rhs) {
@@ -67,6 +73,17 @@ struct idx {
 
   friend bool operator==(const idx& a, const idx& b) { return a.x == b.x && a.y == b.y; }
 
+  idx& operator+=(const idx_signed& rhs) {
+    this->x += rhs.x;
+    this->y += rhs.y;
+    return *this; // return the result by reference
+  }
+
+ friend idx operator+(idx lhs, const idx_signed& rhs) {
+    lhs += rhs;
+    return lhs; // return the result by value (uses move constructor)
+  }
+
   enum OrBit {
     l = 1,
     d = 2,
@@ -80,7 +97,7 @@ struct idx {
 
   static size_t orientation(const idx& me, const idx& other);
   size_t orientation(const idx& other) const;
-  static const idx U, UL, UR, L, R, D, DL, DR;
+  static const idx_signed U, UL, UR, L, R, D, DL, DR;
 };
 
 #define dimAt(a, b, s) a + (b * s)

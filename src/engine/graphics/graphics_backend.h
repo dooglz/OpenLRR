@@ -9,13 +9,13 @@
 
 struct RenderableItem {
   enum PIPELINE { lit, unlit, PIPELINE_COUNT };
-  RenderableItem(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount, PIPELINE p)
+  RenderableItem(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount, PIPELINE p)
       : _pipeline{p}, _vcount{vcount}, _icount{icount} {}
-  virtual void updateData(Game::Vertex* vertices, size_t vcount, glm::uint16_t* indices, size_t icount) = 0;
+  virtual void updateData(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount) = 0;
   virtual ~RenderableItem(){};
   const PIPELINE _pipeline;
-  size_t _vcount;
-  size_t _icount;
+  uint32_t _vcount;
+  uint32_t _icount;
   virtual void setUniformModelMatrix(glm::mat4 m) = 0;
   virtual void updateUniform() = 0;
 };

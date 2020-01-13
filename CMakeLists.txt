@@ -39,6 +39,8 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
   endif()
 endif()
 
+
+
 add_subdirectory(deps/glfw EXCLUDE_FROM_ALL)
 add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
 add_library(fastNoise ${CMAKE_CURRENT_SOURCE_DIR}/deps/fastnoise/FastNoise.cpp ${CMAKE_CURRENT_SOURCE_DIR}/deps/fastnoise/FastNoise.h)
@@ -47,7 +49,21 @@ target_compile_features(fastNoise PUBLIC cxx_std_17)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE  ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb)
 
-target_link_libraries (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise stb)
+#target_include_directorie, but marks libs as SYSTEM, so no warnings are shown for them
+function(target_link_libraries_system target)
+  set(libs ${ARGN})
+  foreach(lib ${libs})
+    get_target_property(lib_include_dirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(${target} SYSTEM PRIVATE ${lib_include_dirs})
+    target_link_libraries(${target} ${lib})
+  endforeach(lib)
+  #this doesn't work for VS, so we gotta do it their way:
+  if(CMAKE_GENERATOR MATCHES "Visual Studio")
+    target_compile_options(${target} PRIVATE /experimental:external /external:anglebrackets /external:W0)
+  endif()
+endfunction(target_link_libraries_system)
+
+target_link_libraries_system (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise stb)
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 
@@ -86,3 +102,5 @@ else()
 endif()
 
 add_dependencies(OpenLRR CompileShaders copy_resources)
+
+

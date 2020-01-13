@@ -1,6 +1,5 @@
 #ifndef OPENLRR_UTILS_H
 #define OPENLRR_UTILS_H
-#define NOMINMAX
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/ext/quaternion_double.hpp>
 #include <glm/ext/vector_double3.hpp>
