@@ -7,6 +7,7 @@
 #include <functional>
 #include <glm/glm.hpp>
 #include <memory>
+#include <set>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
@@ -101,8 +102,8 @@ template <class T> struct VertexDataFormat {
     static vk::PipelineVertexInputStateCreateInfo a(vk::PipelineVertexInputStateCreateFlags(), // PipelineVertexInputStateCreateFlags
                                                     1,                                         // vertexBindingDescriptionCount
                                                     T::getBindingDescription(),                // VertexInputBindingDescription
-                                                    static_cast<uint32_t> (T::getAttributeDescriptions()->size()), // vertexAttributeDescriptionCount
-                                                    T::getAttributeDescriptions()->data()      // VertexInputAttributeDescription
+                                                    static_cast<uint32_t>(T::getAttributeDescriptions()->size()), // vertexAttributeDescriptionCount
+                                                    T::getAttributeDescriptions()->data()                         // VertexInputAttributeDescription
     );
     int ff = 4;
     return a;
@@ -161,8 +162,6 @@ private:
   const vk::PhysicalDevice& _physicalDevice;
 };
 
-void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
-                       const VkSwapchainKHR& swapChain, const std::vector<vk::CommandBuffer>& commandBuffers, SyncObjects& sync);
 void RebuildSwapChain();
 // returns -1 if swapchain needs to be rebuilt.
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync);
@@ -227,17 +226,31 @@ struct vLitPipeline_DescriptorSet : public DescriptorSets {
 };
 
 struct CmdBuffers {
-  std::vector<vk::CommandBuffer> commandBuffers;
-  std::vector<size_t> commandBufferStates;
+  struct commandBufferCollection {
+    vk::CommandBuffer commandBuffer;
+    std::set<const VertexBuffer*> referencedVB;
+    size_t hashedState;
+    vk::Fence* fence = nullptr;
+    void Reset(const vk::Device& device);
+  };
+  std::vector<commandBufferCollection> commandBuffers;
+  //  std::vector<size_t> commandBufferStates;
   CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
   void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
               std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index);
 
+  // wipe any commandlist that includes this VertexBuffer.
+  static void invalidate(const VertexBuffer* vbuf);
+  ~CmdBuffers();
+
 protected:
   void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,
                       std::function<void(const vk::CommandBuffer&)> descriptorSetFunc);
+  static std::set<CmdBuffers*> _all;
+  const vk::Device& _logicalDevice;
 };
+
 struct OneOffCmdBuffer {
   OneOffCmdBuffer() = delete;
   vk::CommandBuffer commandBuffer;
@@ -273,3 +286,6 @@ private:
   void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
   void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 };
+
+void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
+                       const VkSwapchainKHR& swapChain, CmdBuffers::commandBufferCollection& commandBuffer, SyncObjects& sync);

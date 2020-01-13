@@ -267,80 +267,14 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
 
   // glm::vec3 n6 = glm::triangleNormal(c, b, a);
 
-  // debug cube - clockwise
-  const glm::vec3 dbgCubePos(5, 5, 5);
-  std::vector<Game::Vertex> dbgV(24);
-  std::vector<uint16_t> dbgCubeInd(24);
-
-  // top
-  dbgV[0].p = glm::vec3(0, 0, 1);
-  dbgV[1].p = glm::vec3(1, 0, 1);
-  dbgV[2].p = glm::vec3(1, 1, 1);
-  dbgV[3].p = glm::vec3(0, 0, 1);
-  dbgV[4].p = glm::vec3(1, 1, 1);
-  dbgV[5].p = glm::vec3(0, 1, 1);
-  dbgCubeInd[0] = 0;
-  dbgCubeInd[1] = 1;
-  dbgCubeInd[2] = 2;
-  dbgCubeInd[3] = 3;
-  dbgCubeInd[4] = 4;
-  dbgCubeInd[5] = 5;
-  // bottom
-  dbgV[6].p = glm::vec3(0, 0, 0);
-  dbgV[7].p = glm::vec3(1, 0, 0);
-  dbgV[8].p = glm::vec3(1, 1, 0);
-  dbgV[9].p = glm::vec3(0, 0, 0);
-  dbgV[10].p = glm::vec3(1, 1, 0);
-  dbgV[11].p = glm::vec3(0, 1, 0);
-  dbgCubeInd[8] = 6;
-  dbgCubeInd[7] = 7;
-  dbgCubeInd[6] = 8;
-  dbgCubeInd[11] = 9;
-  dbgCubeInd[10] = 10;
-  dbgCubeInd[9] = 11;
-  ////Front side
-  dbgV[12].p = glm::vec3(0, 1, 0);
-  dbgV[13].p = glm::vec3(0, 1, 1);
-  dbgV[14].p = glm::vec3(1, 1, 0);
-  dbgV[15].p = glm::vec3(0, 1, 1);
-  dbgV[16].p = glm::vec3(1, 1, 1);
-  dbgV[17].p = glm::vec3(1, 1, 0);
-  dbgCubeInd[12] = 12;
-  dbgCubeInd[13] = 13;
-  dbgCubeInd[14] = 14;
-  dbgCubeInd[15] = 15;
-  dbgCubeInd[16] = 16;
-  dbgCubeInd[17] = 17;
-  ////Back side
-  dbgV[18].p = glm::vec3(0, 0, 0);
-  dbgV[19].p = glm::vec3(0, 0, 1);
-  dbgV[20].p = glm::vec3(1, 0, 0);
-  dbgV[21].p = glm::vec3(0, 0, 1);
-  dbgV[22].p = glm::vec3(1, 0, 1);
-  dbgV[23].p = glm::vec3(1, 0, 0);
-  dbgCubeInd[18] = 20;
-  dbgCubeInd[19] = 19;
-  dbgCubeInd[20] = 18;
-  dbgCubeInd[21] = 23;
-  dbgCubeInd[22] = 22;
-  dbgCubeInd[23] = 21;
-
-  for (auto& v : dbgV) {
-    v.p -= 0.5f;
-    // v.p *= 4.0f;
-    v.p += (dbgCubePos);
-    v.n = glm::vec3(1, 0, 0);
-    v.c = glm::vec3(0, 1, 0);
-  }
-
   for (auto& v : allVerts) {
     v.p.z = v.p.z * 0.25f;
     // v.p.z = 0;
   }
 
-  const auto cnt = static_cast<uint16_t>(allVerts.size());
-  std::transform(dbgCubeInd.begin(), dbgCubeInd.end(), std::back_inserter(allIndices), [cnt](auto& c) { return c + cnt; });
-  allVerts.insert(allVerts.end(), dbgV.begin(), dbgV.end());
+  //const auto cnt = static_cast<uint16_t>(allVerts.size());
+  //std::transform(dbgCubeInd.begin(), dbgCubeInd.end(), std::back_inserter(allIndices), [cnt](auto& c) { return c + cnt; });
+  //allVerts.insert(allVerts.end(), dbgV.begin(), dbgV.end());
 
   std::cout << "WamBam" << std::endl;
 }

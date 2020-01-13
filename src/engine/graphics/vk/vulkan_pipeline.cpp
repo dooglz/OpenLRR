@@ -226,46 +226,7 @@ uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& 
   return imageIndex;
 }
 
-void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
-                       const VkSwapchainKHR& swapChain, const std::vector<vk::CommandBuffer>& commandBuffers, SyncObjects& sync) {
 
-  device.waitForFences(1, &sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
-
-  // uint32_t imageIndex = WaitForAvilibleImage(device, swapChain, sync);
-
-  if (sync.imagesInFlight[imageIndex]) {
-    device.waitForFences(1, &sync.imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-  }
-  sync.imagesInFlight[imageIndex] = sync.inFlightFences[sync.currentFrame];
-
-  vk::SubmitInfo submitInfo;
-  vk::Semaphore waitSemaphores[] = {sync.imageAvailableSemaphores[sync.currentFrame]};
-  vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = waitSemaphores;
-  submitInfo.pWaitDstStageMask = waitStages;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
-  vk::Semaphore signalSemaphores[] = {sync.renderFinishedSemaphores[sync.currentFrame]};
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = signalSemaphores;
-
-  device.resetFences(1, &sync.inFlightFences[sync.currentFrame]);
-  graphicsQueue.submit(1, &submitInfo, sync.inFlightFences[sync.currentFrame]);
-
-  vk::PresentInfoKHR presentInfo;
-  presentInfo.waitSemaphoreCount = 1;
-  presentInfo.pWaitSemaphores = signalSemaphores;
-  vk::SwapchainKHR swapChains[] = {swapChain};
-  presentInfo.swapchainCount = 1;
-  presentInfo.pSwapchains = swapChains;
-  presentInfo.pImageIndices = &imageIndex;
-
-  presentQueue.presentKHR(&presentInfo);
-
-  sync.currentFrame = (sync.currentFrame + 1) % SyncObjects::MAX_FRAMES_IN_FLIGHT;
-}
 
 vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
     : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), vLitPipeline_DescriptorSetLayout(device).descriptorSetLayout) {}

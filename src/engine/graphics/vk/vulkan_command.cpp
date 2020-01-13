@@ -46,17 +46,20 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
   const RecordInfo h = {renderPass, pipeline, swapChainExtent, vbuf, vcount, index};
   const size_t thehash = RecordInfoHash{}(h);
 
-  if (commandBufferStates[index] == thehash) {
+  if (commandBuffers[index].hashedState == thehash) {
     return;
   }
 
-  commandBufferStates[index] = thehash;
+  commandBuffers[index].hashedState = thehash;
+  commandBuffers[index].referencedVB.insert(&vbuf);
 
+  const vk::CommandBuffer& cb = commandBuffers[index].commandBuffer;
+  std::cout << "commandBuffer " << cb << " Recording" << std::endl;
   // commandBuffers[index].reset(vk::CommandBufferResetFlags());
   // commandBufferStates[index] = &pipeline;
 
   vk::CommandBufferBeginInfo beginInfo;
-  commandBuffers[index].begin(beginInfo);
+  cb.begin(beginInfo);
 
   vk::RenderPassBeginInfo renderPassInfo;
   renderPassInfo.renderPass = renderPass;
@@ -66,24 +69,50 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
   vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
   renderPassInfo.clearValueCount = 1;
   renderPassInfo.pClearValues = &clearColor;
-  commandBuffers[index].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+  cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-  commandBuffers[index].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
+  cb.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
 
   // RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSets.descriptorSets[index]);
-  RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSetFunc);
-  commandBuffers[index].endRenderPass();
-  commandBuffers[index].end();
+  RecordCommands(vbuf, vcount, cb, pipeline.pipelineLayout, descriptorSetFunc);
+  cb.endRenderPass();
+  cb.end();
 }
 
-CmdBuffers::CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount) {
+void CmdBuffers::commandBufferCollection::Reset(const vk::Device& device) {
+  if (fence != nullptr) {
+    device.waitForFences(1, fence, VK_TRUE, UINT64_MAX);
+  }
+  commandBuffer.reset(vk::CommandBufferResetFlags());
+  referencedVB.clear();
+  hashedState = 0;
+}
+
+void CmdBuffers::invalidate(const VertexBuffer* vbuf) {
+  for (auto cbuffer : _all) {
+    for (auto& cbufferC : cbuffer->commandBuffers) {
+      if (cbufferC.referencedVB.find(vbuf) != cbufferC.referencedVB.end()) {
+        cbufferC.Reset(cbuffer->_logicalDevice);
+        std::cout << "commandBuffer " << cbufferC.commandBuffer << " Invlalidated" << std::endl;
+      }
+    }
+  }
+}
+
+std::set<CmdBuffers*> CmdBuffers::_all;
+CmdBuffers::~CmdBuffers() { _all.erase(this); }
+
+CmdBuffers::CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount) : _logicalDevice{device} {
   commandBuffers.resize(amount);
-  commandBufferStates.resize(amount);
   vk::CommandBufferAllocateInfo allocInfo;
   allocInfo.commandPool = pool;
   allocInfo.level = vk::CommandBufferLevel::ePrimary;
   allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
-  commandBuffers = device.allocateCommandBuffers(allocInfo);
+  std::vector<vk::CommandBuffer> buffers = device.allocateCommandBuffers(allocInfo);
+  for (size_t i = 0; i < amount; i++) {
+    commandBuffers[i].commandBuffer = buffers[i];
+  }
+  _all.insert(this);
 }
 
 OneOffCmdBuffer::OneOffCmdBuffer(const vk::Device& device, const vk::CommandPool& pool) : _logicalDevice(device), _pool(pool) {
@@ -113,4 +142,45 @@ void OneOffCmdBuffer::submit(vk::Queue& queue) {
 OneOffCmdBuffer::~OneOffCmdBuffer() {
   _logicalDevice.destroyFence(_fence);
   _logicalDevice.freeCommandBuffers(_pool, commandBuffer);
+}
+
+void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
+                       const VkSwapchainKHR& swapChain, CmdBuffers::commandBufferCollection& commandBuffer, SyncObjects& sync) {
+
+  device.waitForFences(1, &sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
+
+  // uint32_t imageIndex = WaitForAvilibleImage(device, swapChain, sync);
+
+  if (sync.imagesInFlight[imageIndex]) {
+    device.waitForFences(1, &sync.imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+  }
+  sync.imagesInFlight[imageIndex] = sync.inFlightFences[sync.currentFrame];
+
+  vk::SubmitInfo submitInfo;
+  vk::Semaphore waitSemaphores[] = {sync.imageAvailableSemaphores[sync.currentFrame]};
+  vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores = waitSemaphores;
+  submitInfo.pWaitDstStageMask = waitStages;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &commandBuffer.commandBuffer;
+  commandBuffer.fence = &sync.inFlightFences[sync.currentFrame];
+  vk::Semaphore signalSemaphores[] = {sync.renderFinishedSemaphores[sync.currentFrame]};
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = signalSemaphores;
+
+  device.resetFences(1, &sync.inFlightFences[sync.currentFrame]);
+  graphicsQueue.submit(1, &submitInfo, sync.inFlightFences[sync.currentFrame]);
+
+  vk::PresentInfoKHR presentInfo;
+  presentInfo.waitSemaphoreCount = 1;
+  presentInfo.pWaitSemaphores = signalSemaphores;
+  vk::SwapchainKHR swapChains[] = {swapChain};
+  presentInfo.swapchainCount = 1;
+  presentInfo.pSwapchains = swapChains;
+  presentInfo.pImageIndices = &imageIndex;
+
+  presentQueue.presentKHR(&presentInfo);
+
+  sync.currentFrame = (sync.currentFrame + 1) % SyncObjects::MAX_FRAMES_IN_FLIGHT;
 }

@@ -63,6 +63,8 @@ VertexBuffer::VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& p
 
 VertexBuffer::~VertexBuffer() {
   // Todo: check no command buffers have us included
+  // This can't be done if there is a refernce to us in any command buffer.
+  CmdBuffers::invalidate(this);
   vkDestroyBuffer(_logicalDevice, vertexBuffer, nullptr);
   vkFreeMemory(_logicalDevice, vertexBufferMemory, nullptr);
   vkDestroyBuffer(_logicalDevice, indexBuffer, nullptr);
@@ -287,45 +289,56 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
     : _logicalDevice(device), _physicalDevice(pdevice), _pool(pool), _queue(queue) {
   int texWidth, texHeight, texChannels;
   const std::string imagename = "gravel09_col_sm.jpg";
-  stbi_uc* pixels = stbi_load(std::string("res/"+imagename).c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  stbi_uc* pixels = stbi_load(std::string("res/" + imagename).c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
   VkDeviceSize imageSize = texWidth * texHeight * 4;
 
   if (!pixels) {
     throw std::runtime_error("failed to load texture image!");
   }
 
-  _imageBuf = createBuffer(_logicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
-  _imageMemory =
-      AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostVisible, _imageBuf);
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  //upload image data into stagingBuffer
+  {
+    stagingBuffer = createBuffer(_logicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
+    stagingBufferMemory =
+        AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostVisible, stagingBuffer);
 
-  void* data;
-  vkMapMemory(device, _imageMemory, 0, imageSize, 0, &data);
-  memcpy(data, pixels, static_cast<size_t>(imageSize));
-  vkUnmapMemory(device, _imageMemory);
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(device, stagingBufferMemory);
+    stbi_image_free(pixels);
+  }
 
-  stbi_image_free(pixels);
-
-
-  std::cout << "Loaded image: "<<imagename << " " <<texWidth << "x" << texHeight << " size:" << imageSize << std::endl;
+  std::cout << "Loaded image: " << imagename << " " << texWidth << "x" << texHeight << " size:" << imageSize << std::endl;
+  //create a new memory area as an image
   createImage(pdevice, texWidth, texHeight, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal,
               vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, _image,
               _imageMemory);
 
+  //copy from stagingBuffer
   transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-  copyBufferToImage(_imageBuf, _image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+  copyBufferToImage(stagingBuffer, _image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
   transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-  vk::ImageViewCreateInfo createInfo;
-  createInfo.image = _image;
-  createInfo.viewType = vk::ImageViewType::e2D;
-  createInfo.format = vk::Format::eR8G8B8A8Unorm;
-  createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-  createInfo.subresourceRange.baseMipLevel = 0;
-  createInfo.subresourceRange.levelCount = 1;
-  createInfo.subresourceRange.baseArrayLayer = 0;
-  createInfo.subresourceRange.layerCount = 1;
-  _imageView = _logicalDevice.createImageView(createInfo);
+  //delete stagingBuffer
+  device.destroyBuffer(stagingBuffer);
+  device.freeMemory(stagingBufferMemory);
 
+  // ImageView
+  {
+    vk::ImageViewCreateInfo createInfo;
+    createInfo.image = _image;
+    createInfo.viewType = vk::ImageViewType::e2D;
+    createInfo.format = vk::Format::eR8G8B8A8Unorm;
+    createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    createInfo.subresourceRange.baseMipLevel = 0;
+    createInfo.subresourceRange.levelCount = 1;
+    createInfo.subresourceRange.baseArrayLayer = 0;
+    createInfo.subresourceRange.layerCount = 1;
+    _imageView = _logicalDevice.createImageView(createInfo);
+  }
   // sampler
   {
     vk::SamplerCreateInfo samplerInfo;
@@ -418,13 +431,11 @@ void TextureImage::transitionImageLayout(vk::Image image, vk::Format format, vk:
 }
 void TextureImage::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height) {
   OneOffCmdBuffer commandBuffer(_logicalDevice, _pool);
-
   vk::BufferImageCopy region = {};
   region.bufferOffset = 0;
   region.bufferRowLength = 0;
   region.bufferImageHeight = 0;
   region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-  ;
   region.imageSubresource.mipLevel = 0;
   region.imageSubresource.baseArrayLayer = 0;
   region.imageSubresource.layerCount = 1;

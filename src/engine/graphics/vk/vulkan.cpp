@@ -116,7 +116,7 @@ void VulkanBackend::drawFrame(double dt) {
                        ri._icount, f4, a);
   }
 
-  drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers, *syncObjects);
+  drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers[a], *syncObjects);
 }
 
 void VulkanBackend::resize() {
@@ -125,7 +125,9 @@ void VulkanBackend::resize() {
   std::cout << "VK recreate" << std::endl;
 }
 
-vkRenderableItem::~vkRenderableItem() { _vbuffer.reset(); }
+vkRenderableItem::~vkRenderableItem() { 
+    _vbuffer.reset();
+}
 void vkRenderableItem::updateData(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount) {}
 
 vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount, RenderableItem::PIPELINE p)

@@ -9,6 +9,8 @@
 
 std::unique_ptr<Game::Level> level;
 std::unique_ptr<RenderableItem> levelRI;
+std::unique_ptr<RenderableItem> lampRI;
+
 
 void Game::StartUp() {
 
