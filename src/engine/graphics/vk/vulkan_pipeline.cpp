@@ -225,17 +225,51 @@ uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& 
   }
   return imageIndex;
 }
-
-
-
+vk::DescriptorSetLayout vLitPipeline::_layout;
 vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
-    : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), vLitPipeline_DescriptorSetLayout(device).descriptorSetLayout) {}
+    : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), getDescriptorSetLayout(device)) {}
 
-  vLitPipeline::~vLitPipeline(){
-  _descriptorSets.reset();
+vLitPipeline::~vLitPipeline() {
+  _logicalDevice.destroyDescriptorSetLayout(_layout);
+  _descriptorSets.clear();
   _texture.reset();
   _modelUniform.reset();
   _globalUniform.reset();
+}
+
+const vk::DescriptorSetLayout vLitPipeline::getDescriptorSetLayout(const vk::Device& device) {
+ 
+  if (!_layout) {
+    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
+    globalUboLayoutBinding.binding = vLIT_GLOBAL_UBO_BINDING;
+    globalUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+    globalUboLayoutBinding.descriptorCount = 1;
+    globalUboLayoutBinding.pImmutableSamplers = nullptr;
+    globalUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+
+    vk::DescriptorSetLayoutBinding modelUboLayoutBinding;
+    modelUboLayoutBinding.binding = vLIT_MODEL_UBO_BINDING;
+    modelUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+    modelUboLayoutBinding.descriptorCount = 1;
+    modelUboLayoutBinding.pImmutableSamplers = nullptr;
+    modelUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+
+    // for image sampler
+    vk::DescriptorSetLayoutBinding samplerLayoutBinding;
+    samplerLayoutBinding.binding = vLIT_IMAGE_UBO_BINDING;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+
+    bindings = {globalUboLayoutBinding, modelUboLayoutBinding, samplerLayoutBinding};
+    vk::DescriptorSetLayoutCreateInfo layoutInfo;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+    _layout = device.createDescriptorSetLayout(layoutInfo);
+  }
+  return _layout;
 }
 
 void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, const std::vector<vk::Image>& swapChainImages,
@@ -244,20 +278,67 @@ void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, 
 
   // uniforms
   _globalUniform = std::make_unique<Uniform>(sizeof(vLit_global_UniformBufferObject), swapChainFramebuffers.size(), _logicalDevice, pdevice);
-  _modelUniform = std::make_unique<Uniform>(sizeof(vLit_object_UniformBufferObject), swapChainFramebuffers.size(), _logicalDevice, pdevice);
+  _modelUniform = std::make_unique<PackedUniform<vLit_object_UniformBufferObject>>(static_cast<uint32_t>(swapChainFramebuffers.size()), _bucketSize,
+                                                                                   _logicalDevice, pdevice);
+  //_modelUniform = std::make_unique<Uniform>(sizeof(vLit_object_UniformBufferObject), swapChainFramebuffers.size(), _logicalDevice, pdevice);
   // images
   _texture = std::make_unique<TextureImage>(_logicalDevice, pdevice, pool, queue);
 
-  _descriptorSets = std::make_unique<vLitPipeline_DescriptorSet>(
-      _logicalDevice, swapChainImages, vLitPipeline_DescriptorSetLayout(_logicalDevice).descriptorSetLayout, descriptorPool,
-      _globalUniform->uniformBuffers, _modelUniform->uniformBuffers, _texture->_imageView, _texture->_imageSampler);
+  // DescriptorSets
+  {
+    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), getDescriptorSetLayout(_logicalDevice));
+    vk::DescriptorSetAllocateInfo allocInfo;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+    allocInfo.pSetLayouts = layouts.data();
+
+    _descriptorSets = _logicalDevice.allocateDescriptorSets(allocInfo);
+
+    for (size_t i = 0; i < swapChainImages.size(); i++) {
+      vk::DescriptorBufferInfo bufferInfo1 = {};
+      bufferInfo1.buffer = _globalUniform->uniformBuffers[i];
+      bufferInfo1.offset = 0;
+      bufferInfo1.range = sizeof(vLit_global_UniformBufferObject);
+      vk::DescriptorBufferInfo bufferInfo2 = {};
+      bufferInfo2.buffer = _modelUniform->uniformBuffers[i];
+      bufferInfo2.offset = 0;
+      bufferInfo2.range = sizeof(vLit_object_UniformBufferObject);
+
+      vk::DescriptorImageInfo imageInfo = {};
+      imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+      imageInfo.imageView = _texture->_imageView;
+      imageInfo.sampler = _texture->_imageSampler;
+
+      std::array<vk::WriteDescriptorSet, VLIT_BINDINGS_COUNT> descriptorWrites = {};
+      descriptorWrites[vLIT_GLOBAL_UBO_BINDING].dstSet = _descriptorSets[i];
+      descriptorWrites[vLIT_GLOBAL_UBO_BINDING].dstBinding = 0;
+      descriptorWrites[vLIT_GLOBAL_UBO_BINDING].dstArrayElement = 0;
+      descriptorWrites[vLIT_GLOBAL_UBO_BINDING].descriptorType = vk::DescriptorType::eUniformBuffer;
+      descriptorWrites[vLIT_GLOBAL_UBO_BINDING].descriptorCount = 1;
+      descriptorWrites[vLIT_GLOBAL_UBO_BINDING].pBufferInfo = &bufferInfo1;
+      descriptorWrites[vLIT_MODEL_UBO_BINDING].dstSet = _descriptorSets[i];
+      descriptorWrites[vLIT_MODEL_UBO_BINDING].dstBinding = 1;
+      descriptorWrites[vLIT_MODEL_UBO_BINDING].dstArrayElement = 0;
+      descriptorWrites[vLIT_MODEL_UBO_BINDING].descriptorType = vk::DescriptorType::eUniformBuffer;
+      descriptorWrites[vLIT_MODEL_UBO_BINDING].descriptorCount = 1;
+      descriptorWrites[vLIT_MODEL_UBO_BINDING].pBufferInfo = &bufferInfo2;
+      descriptorWrites[vLIT_IMAGE_UBO_BINDING].dstSet = _descriptorSets[i];
+      descriptorWrites[vLIT_IMAGE_UBO_BINDING].dstBinding = 2;
+      descriptorWrites[vLIT_IMAGE_UBO_BINDING].dstArrayElement = 0;
+      descriptorWrites[vLIT_IMAGE_UBO_BINDING].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+      descriptorWrites[vLIT_IMAGE_UBO_BINDING].descriptorCount = 1;
+      descriptorWrites[vLIT_IMAGE_UBO_BINDING].pImageInfo = &imageInfo;
+
+      _logicalDevice.updateDescriptorSets(descriptorWrites, nullptr);
+    }
+  }
 }
 
 void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, uint32_t index) {
-  assert(_descriptorSets && _descriptorSets->descriptorSets.size() >= index);
+  assert(_descriptorSets.size() >= index);
   cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout,
                                0, // first set
-                               _descriptorSets->descriptorSets[index],
+                               _descriptorSets[index],
                                nullptr // dynamicOffsets
   );
 }
@@ -272,8 +353,7 @@ void vLitPipeline::UpdateGlobalUniform(uint32_t index) {
 }
 
 void vLitPipeline::UpdateModelUniform(uint32_t index) {
-  vLit_object_UniformBufferObject uniformData = {};
-  uniformData.model = glm::mat4(1.0f);
-  uniformData.mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
-  _modelUniform->updateUniformBuffer(index, (void*)&uniformData);
+  (*_modelUniform)[0].model = glm::mat4(1.0f);
+  (*_modelUniform)[0].mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
+  _modelUniform->sendToGpu(index);
 }

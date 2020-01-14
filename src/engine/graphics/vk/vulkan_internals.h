@@ -37,7 +37,13 @@ struct vLit_object_UniformBufferObject {
 };
 
 const bool ENABLE_VSYNC = false;
-// things that exist for whole applicaiton
+
+
+vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk::BufferUsageFlags usage);
+vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::MemoryPropertyFlags& properties,
+                                        const vk::Buffer& buffer);
+
+    // things that exist for whole applicaiton
 struct ContextInfo {
   ContextInfo();
   ~ContextInfo();
@@ -176,12 +182,57 @@ struct Uniform {
   std::vector<vk::DeviceMemory> uniformBuffersMemory;
   Uniform(size_t uboSize, size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
   ~Uniform();
-  void updateUniformBuffer(uint32_t currentImage, const void* uboData);
+  void updateUniformBuffer(uint32_t currentImage, const void* uboData, uint32_t which = 0);
 
 private:
   const vk::Device& _logicalDevice;
   const size_t _qty;
   const size_t _size;
+};
+
+template <typename T> class PackedUniform {
+public:
+  PackedUniform(uint32_t framebuffer_sets, uint32_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice)
+      : _esize{sizeof(T)}, _qty{qty}, _totalSize{_esize * _qty}, _framebuffer_sets{framebuffer_sets}, _logicalDevice(device) {
+    uniformBuffers.resize(_qty);
+    _uniformBuffersMemory.resize(_qty);
+    _cpuCopy.resize(_framebuffer_sets);
+    for (size_t i = 0; i < _framebuffer_sets; i++) {
+      uniformBuffers[i] = createBuffer(device, _totalSize, vk::BufferUsageFlagBits::eUniformBuffer);
+      _uniformBuffersMemory[i] = AllocateBufferOnDevice(
+          device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
+    }
+    std::cout << "Created " << _framebuffer_sets << " sets of " << _qty << " packed uniforms of size : " << _esize << " - " << _totalSize
+              << std::endl;
+  };
+  T& operator[](int i) { return _cpuCopy[i]; };
+  ~PackedUniform() {
+    for (size_t i = 0; i < _framebuffer_sets; i++) {
+      _logicalDevice.destroyBuffer(uniformBuffers[i]);
+      _logicalDevice.freeMemory(_uniformBuffersMemory[i]);
+    }
+  }
+  void sendToGpu(uint32_t currentImage) {
+    auto data = _logicalDevice.mapMemory(_uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
+    memcpy(data, _cpuCopy.data(), _totalSize);
+    _logicalDevice.unmapMemory(_uniformBuffersMemory[currentImage]);
+  };
+  void sendToGpu() {
+    for (size_t i = 0; i < _framebuffer_sets; i++) {
+      sendToGpu(i);
+    }
+  }
+  std::vector<vk::Buffer> uniformBuffers;
+
+private:
+  const vk::Device& _logicalDevice;
+  const uint32_t _framebuffer_sets;
+  const uint32_t _qty;
+  const size_t _esize;
+  const size_t _totalSize;
+  
+  std::vector<vk::DeviceMemory> _uniformBuffersMemory;
+  std::vector<T> _cpuCopy;
 };
 
 struct DescriptorSetLayout {
@@ -193,13 +244,6 @@ private:
   const vk::Device& _logicalDevice;
 };
 
-struct vLitPipeline_DescriptorSetLayout : public DescriptorSetLayout {
-  vLitPipeline_DescriptorSetLayout(const vk::Device& device);
-
-private:
-  const std::vector<vk::DescriptorSetLayoutBinding> _generate();
-};
-
 struct DescriptorPool {
   vk::DescriptorPool descriptorPool;
   DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages);
@@ -207,22 +251,6 @@ struct DescriptorPool {
 
 private:
   const vk::Device& _logicalDevice;
-};
-
-struct DescriptorSets {
-  std::vector<vk::DescriptorSet> descriptorSets;
-  DescriptorSets(const vk::Device& device);
-  ~DescriptorSets();
-
-protected:
-  const vk::Device& _logicalDevice;
-};
-
-struct vLitPipeline_DescriptorSet : public DescriptorSets {
-  vLitPipeline_DescriptorSet(const vk::Device& device, const std::vector<vk::Image>& swapChainImages,
-                             const vk::DescriptorSetLayout& descriptorSetLayout, const vk::DescriptorPool& descriptorPool,
-                             const std::vector<vk::Buffer>& globalUniformBuffers, const std::vector<vk::Buffer>& modelUniformBuffers,
-                             const vk::ImageView& textureImageView, const vk::Sampler& textureSampler);
 };
 
 struct CmdBuffers {

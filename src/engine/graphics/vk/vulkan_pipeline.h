@@ -5,9 +5,13 @@
 #ifndef OPENLRR_VULKAN_PIPELINE_H
 #define OPENLRR_VULKAN_PIPELINE_H
 #include <vulkan/vulkan.hpp>
+
 struct DescriptorSets;
 struct Uniform;
 struct TextureImage;
+template <typename T> class PackedUniform;
+struct vLit_object_UniformBufferObject;
+
 
 enum VLIT_BINDINGS { vLIT_GLOBAL_UBO_BINDING, vLIT_MODEL_UBO_BINDING, vLIT_IMAGE_UBO_BINDING, VLIT_BINDINGS_COUNT };
 
@@ -32,15 +36,21 @@ public:
   void BindReleventDescriptor(const vk::CommandBuffer& cmdbuff, uint32_t index) override;
   void UpdateGlobalUniform(uint32_t index);
   void UpdateModelUniform(uint32_t index);
+  
   ~vLitPipeline();
-private:
+protected:
+
+  const uint32_t _bucketSize = 16;
+  static const vk::DescriptorSetLayout getDescriptorSetLayout(const vk::Device& device);
   // const vk::DescriptorSetLayout _descriptorSetLayout;
   // std::unique_ptr<DescriptorSets> _descriptorSets;
-
-  std::unique_ptr<DescriptorSets> _descriptorSets;
+  std::vector<vk::DescriptorSet> _descriptorSets;
   std::unique_ptr<Uniform> _globalUniform;
-  std::unique_ptr<Uniform> _modelUniform;
+  std::unique_ptr<PackedUniform<vLit_object_UniformBufferObject>> _modelUniform;
   std::unique_ptr<TextureImage> _texture;
+
+private:
+  static vk::DescriptorSetLayout _layout;
 };
 
 #endif // OPENLRR_VULKAN_PIPELINE_H
