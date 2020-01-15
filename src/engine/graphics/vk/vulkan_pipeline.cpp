@@ -44,8 +44,6 @@ static std::vector<char> readFile(const std::string& filename) {
   return buffer;
 }
 
-
-
 Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
                    const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout)
     : _logicalDevice{device}, _descriptorlayout{descriptorSetLayout} {
@@ -240,34 +238,34 @@ vLitPipeline::~vLitPipeline() {
 }
 
 const vk::DescriptorSetLayout vLitPipeline::getDescriptorSetLayout(const vk::Device& device) {
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
-    vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
-    globalUboLayoutBinding.binding = vLIT_GLOBAL_UBO_BINDING;
-    globalUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
-    globalUboLayoutBinding.descriptorCount = 1;
-    globalUboLayoutBinding.pImmutableSamplers = nullptr;
-    globalUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+  std::vector<vk::DescriptorSetLayoutBinding> bindings;
+  vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
+  globalUboLayoutBinding.binding = vLIT_GLOBAL_UBO_BINDING;
+  globalUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  globalUboLayoutBinding.descriptorCount = 1;
+  globalUboLayoutBinding.pImmutableSamplers = nullptr;
+  globalUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 
-    vk::DescriptorSetLayoutBinding modelUboLayoutBinding;
-    modelUboLayoutBinding.binding = vLIT_MODEL_UBO_BINDING;
-    modelUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
-    modelUboLayoutBinding.descriptorCount = 1;
-    modelUboLayoutBinding.pImmutableSamplers = nullptr;
-    modelUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+  vk::DescriptorSetLayoutBinding modelUboLayoutBinding;
+  modelUboLayoutBinding.binding = vLIT_MODEL_UBO_BINDING;
+  modelUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  modelUboLayoutBinding.descriptorCount = 1;
+  modelUboLayoutBinding.pImmutableSamplers = nullptr;
+  modelUboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 
-    // for image sampler
-    vk::DescriptorSetLayoutBinding samplerLayoutBinding;
-    samplerLayoutBinding.binding = vLIT_IMAGE_UBO_BINDING;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+  // for image sampler
+  vk::DescriptorSetLayoutBinding samplerLayoutBinding;
+  samplerLayoutBinding.binding = vLIT_IMAGE_UBO_BINDING;
+  samplerLayoutBinding.descriptorCount = 1;
+  samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+  samplerLayoutBinding.pImmutableSamplers = nullptr;
+  samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
 
-    bindings = {globalUboLayoutBinding, modelUboLayoutBinding, samplerLayoutBinding};
-    vk::DescriptorSetLayoutCreateInfo layoutInfo;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = bindings.data();
-    return device.createDescriptorSetLayout(layoutInfo);
+  bindings = {globalUboLayoutBinding, modelUboLayoutBinding, samplerLayoutBinding};
+  vk::DescriptorSetLayoutCreateInfo layoutInfo;
+  layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+  layoutInfo.pBindings = bindings.data();
+  return device.createDescriptorSetLayout(layoutInfo);
 }
 
 void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, const std::vector<vk::Image>& swapChainImages,
@@ -349,21 +347,32 @@ void vLitPipeline::UpdateModelUniform(uint32_t index) {
 }
 */
 
-
 void vLitPipeline::prepFrame(uint32_t index) {
-  //update global
+  // update global
   vLit_global_UniformBufferObject uniformData = {};
   uniformData.view = Engine::getViewMatrix();
   uniformData.proj = Engine::getProjectionMatrix();
   uniformData.pointLight = glm::vec4(Engine::getLightPos(), 0);
   uniformData.lightDir = glm::vec4(0.0f);
   _globalUniform->updateUniformBuffer(index, &uniformData);
-  //send locals down - should laready be internally updated
+  // send locals down - should laready be internally updated
   _modelUniform->sendToGpu(index);
 }
 
+uint32_t vLitPipeline::getRIUniformOffset(vkRenderableItem* me) {
+  static uint32_t next_offset = 0;
+  auto search = _uniformRImapping.find(me);
+  if (search != _uniformRImapping.end()) {
+    return search->second;
+  }
+  _uniformRImapping[me] = next_offset;
+  next_offset++;
+  if (next_offset >= _bucketSize) {
+    throw std::runtime_error("BAH!");
+  }
+  return _uniformRImapping[me];
+}
 void vLitPipeline::updateRIUniform(vkRenderableItem* me, const glm::mat4& m) {
-  (*_modelUniform)[0].model = glm::mat4(1.0f);
- //(*_modelUniform)[0].mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
-
+  uint32_t uniformOffset = getRIUniformOffset(me);
+  (*_modelUniform)[uniformOffset].model = m;
 }

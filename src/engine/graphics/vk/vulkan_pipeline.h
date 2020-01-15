@@ -6,6 +6,7 @@
 #define OPENLRR_VULKAN_PIPELINE_H
 #include <vulkan/vulkan.hpp>
 #include <glm/fwd.hpp>
+#include <map>
 
 struct DescriptorSets;
 struct Uniform;
@@ -55,15 +56,14 @@ public:
 
   void prepFrame(uint32_t index) override;
 
-
   void updateRIUniform(vkRenderableItem* me, const glm::mat4& m) override;
- // void UpdateGlobalUniform(uint32_t index);
- // void UpdateModelUniform(uint32_t index);
-  //void registerRI(std::shared_ptr<vkRenderableItem> ri) override;
- 
- // static std::vector<std::shared_ptr<vkRenderableItem>> registeredRIs;
+  // void UpdateGlobalUniform(uint32_t index);
+  // void UpdateModelUniform(uint32_t index);
+  // void registerRI(std::shared_ptr<vkRenderableItem> ri) override;
 
-protected :
+  // static std::vector<std::shared_ptr<vkRenderableItem>> registeredRIs;
+
+protected:
   const uint32_t _bucketSize = 16;
   static const vk::DescriptorSetLayout getDescriptorSetLayout(const vk::Device& device);
   // const vk::DescriptorSetLayout _descriptorSetLayout;
@@ -71,8 +71,7 @@ protected :
   std::unique_ptr<Uniform> _globalUniform;
   std::unique_ptr<PackedUniform<vLit_object_UniformBufferObject>> _modelUniform;
   std::unique_ptr<TextureImage> _texture;
-  
-  
+  uint32_t getRIUniformOffset(vkRenderableItem*);
+  std::map<vkRenderableItem*, uint32_t> _uniformRImapping;
 };
-
 #endif // OPENLRR_VULKAN_PIPELINE_H
