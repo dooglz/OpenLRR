@@ -256,6 +256,11 @@ private:
 };
 
 struct CmdBuffers {
+  struct RenderableToken{
+    const VertexBuffer& vbuf;
+    const uint32_t vcount;
+    const std::function<void(const vk::CommandBuffer&)> descriptorSetFunc;
+  };
   struct commandBufferCollection {
     vk::CommandBuffer commandBuffer;
     std::set<const VertexBuffer*> referencedVB;
@@ -269,7 +274,8 @@ struct CmdBuffers {
   void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
               std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index);
-
+  void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
+              const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, std::vector<RenderableToken> tokens, uint32_t index);
   // wipe any commandlist that includes this VertexBuffer.
   static void invalidate(const VertexBuffer* vbuf);
   ~CmdBuffers();

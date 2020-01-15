@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include <glm/gtx/transform.hpp>
 
 std::unique_ptr<Game::Level> level;
 std::unique_ptr<RenderableItem> levelRI;
@@ -20,12 +21,19 @@ void Game::StartUp() {
   levelRI->setUniformModelMatrix(glm::mat4(1.0f));
 
   simpleGeo box = debugCube();
-  // lampRI = std::make_unique<vkRenderableItem>(box.v.data(), static_cast<uint32_t>(box.v.size()), box.i.data(),
-  // static_cast<uint32_t>(box.i.size()),RenderableItem::lit);
-  //  lampRI->setUniformModelMatrix(glm::mat4(1.0f));
+   lampRI = std::make_unique<vkRenderableItem>(box.v.data(), static_cast<uint32_t>(box.v.size()), box.i.data(),
+   static_cast<uint32_t>(box.i.size()),RenderableItem::lit);
+   lampRI->setUniformModelMatrix(glm::mat4(1.0f));
 }
 
-void Game::Tick(double dt) {}
+void Game::Tick(double dt) {
+  static double lifetime = 0;
+  lifetime += dt;
+
+ 
+    lampRI->setUniformModelMatrix(glm::rotate(glm::mat4(1.0f), ((float)lifetime), glm::vec3(0.0f, 0.0f, 1.0f)));
+
+}
 
 Game::Vertex* Game::getVertices(size_t& count) {
   count = level->_verts.size();
@@ -38,6 +46,6 @@ glm::uint16_t* Game::getIndices(size_t& count) {
 }
 void Game::Shutdown() {
   levelRI.reset();
-  // lampRI.reset();
+   lampRI.reset();
   level.reset();
 }

@@ -98,19 +98,19 @@ void VulkanBackend::drawFrame(double dt) {
     pipelines[i]->prepFrame(a);
   }
 
+  std::vector<CmdBuffers::RenderableToken> tokens;
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
-
     auto pl_ri = totalRIs.equal_range((RenderableItem::PIPELINE)i);
     for (auto gg = pl_ri.first; gg != pl_ri.second; gg++) {
       const vkRenderableItem& ri = *gg->second;
       std::function<void(const vk::CommandBuffer&)> decriptorBinder = [&ri, a](const vk::CommandBuffer& c) {
         pipelines[ri._pipeline]->BindReleventDescriptor(c, a, &ri);
       };
-      cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[ri._pipeline],
-                         *ri._vbuffer, ri._icount, decriptorBinder, a);
+      tokens.push_back({*ri._vbuffer, ri._icount, decriptorBinder});
     }
+    cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[i], tokens, a);
   }
-
+ 
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers[a], *syncObjects);
 }
 

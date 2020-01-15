@@ -28,22 +28,26 @@ struct RecordInfo {
   const vk::RenderPass& renderPass;
   const Pipeline& pipeline;
   const vk::Extent2D& swapChainExtent;
-  const VertexBuffer& vbuf;
-  uint32_t vcount, index;
+  const std::vector<CmdBuffers::RenderableToken> tokens;
+  uint32_t index;
 };
 struct RecordInfoHash {
   std::size_t operator()(RecordInfo const& s) const noexcept {
     std::size_t h = 0;
-    hash_combine(h, (void*)s.renderPass, (void*)&s.pipeline, (void*)&s.swapChainExtent, (void*)&s.vbuf, s.vcount, s.index);
+    hash_combine(h, (void*)s.renderPass, (void*)&s.pipeline, (void*)&s.swapChainExtent, s.index, s.tokens.size());
+    for (const auto& t : s.tokens) {
+      hash_combine(h, (void*)&t.vbuf, t.vcount);
+    }
     return h;
   }
 };
 
-void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
-                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
-                        uint32_t vcount, std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index) {
 
-  const RecordInfo h = {renderPass, pipeline, swapChainExtent, vbuf, vcount, index};
+void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
+                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, std::vector<RenderableToken> tokens,
+                        uint32_t index) {
+
+  const RecordInfo h = {renderPass, pipeline, swapChainExtent, tokens, index};
   const size_t thehash = RecordInfoHash{}(h);
 
   if (commandBuffers[index].hashedState == thehash) {
@@ -51,7 +55,10 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
   }
 
   commandBuffers[index].hashedState = thehash;
-  commandBuffers[index].referencedVB.insert(&vbuf);
+  commandBuffers[index].referencedVB.clear();
+  for (const auto& t : tokens) {
+    commandBuffers[index].referencedVB.insert(&t.vbuf);
+  }
 
   const vk::CommandBuffer& cb = commandBuffers[index].commandBuffer;
   std::cout << "commandBuffer " << cb << " Recording" << std::endl;
@@ -74,10 +81,20 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
   cb.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
 
   // RecordCommands(vbuf, vcount, commandBuffers[index], pipeline.pipelineLayout, descriptorSets.descriptorSets[index]);
-  RecordCommands(vbuf, vcount, cb, pipeline.pipelineLayout, descriptorSetFunc);
+  for (const auto& t : tokens) {
+    RecordCommands(t.vbuf, t.vcount, cb, pipeline.pipelineLayout, t.descriptorSetFunc);
+  }
   cb.endRenderPass();
   cb.end();
 }
+void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
+                        const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
+                        uint32_t vcount, std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index) {
+  return Record(device, renderPass, swapChainExtent, swapChainFramebuffers, pipeline, {{vbuf, vcount, descriptorSetFunc}}, index);
+
+}
+
+
 
 void CmdBuffers::commandBufferCollection::Reset(const vk::Device& device) {
   if (fence != nullptr) {

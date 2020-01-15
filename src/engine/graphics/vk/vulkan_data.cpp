@@ -85,6 +85,7 @@ void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::B
 
   device.destroyBuffer(stagingBuffer);
   device.freeMemory(stagingBufferMemory);
+  std::cout << "Buffer Freed " << stagingBufferMemory << std::endl;
 }
 
 void VertexBuffer::UploadVertex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {
