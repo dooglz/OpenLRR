@@ -6,10 +6,10 @@
 #include "../../../game/game_graphics.h"
 #include <functional>
 #include <glm/glm.hpp>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <vector>
-#include <iostream>
 #include <vulkan/vulkan.hpp>
 
 #include "vulkan_pipeline.h"
@@ -37,13 +37,15 @@ struct vLit_object_UniformBufferObject {
 };
 
 const bool ENABLE_VSYNC = false;
+extern uint32_t device_minUniformBufferOffsetAlignment;
 
+inline size_t alignedSize(size_t sz, size_t align) { return ((sz + align - 1) / align) * align; }
 
 vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk::BufferUsageFlags usage);
 vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::MemoryPropertyFlags& properties,
                                         const vk::Buffer& buffer);
 
-    // things that exist for whole applicaiton
+// things that exist for whole applicaiton
 struct ContextInfo {
   ContextInfo();
   ~ContextInfo();
@@ -230,7 +232,7 @@ private:
   const uint32_t _qty;
   const size_t _esize;
   const size_t _totalSize;
-  
+
   std::vector<vk::DeviceMemory> _uniformBuffersMemory;
   std::vector<T> _cpuCopy;
 };
@@ -246,7 +248,7 @@ private:
 
 struct DescriptorPool {
   vk::DescriptorPool descriptorPool;
-  DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages);
+  DescriptorPool(const vk::Device& device, uint32_t frameCount, uint32_t descriptorCount);
   ~DescriptorPool();
 
 private:

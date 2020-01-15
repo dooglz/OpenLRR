@@ -2,16 +2,15 @@
 #include "../engine/graphics/graphics_backend.h"
 #include "../engine/graphics/vk/vulkan.h"
 #include "game_graphics.h"
+#include "geometry.h"
 #include "level.h"
 #include <algorithm>
 #include <memory>
 #include <vector>
-#include "geometry.h"
 
 std::unique_ptr<Game::Level> level;
 std::unique_ptr<RenderableItem> levelRI;
 std::unique_ptr<RenderableItem> lampRI;
-
 
 void Game::StartUp() {
 
@@ -21,8 +20,9 @@ void Game::StartUp() {
   levelRI->setUniformModelMatrix(glm::mat4(1.0f));
 
   simpleGeo box = debugCube();
- // lampRI = std::make_unique<vkRenderableItem>(box.v.data(), static_cast<uint32_t>(box.v.size()), box.i.data(), static_cast<uint32_t>(box.i.size()),RenderableItem::lit);
-//  lampRI->setUniformModelMatrix(glm::mat4(1.0f));
+  // lampRI = std::make_unique<vkRenderableItem>(box.v.data(), static_cast<uint32_t>(box.v.size()), box.i.data(),
+  // static_cast<uint32_t>(box.i.size()),RenderableItem::lit);
+  //  lampRI->setUniformModelMatrix(glm::mat4(1.0f));
 }
 
 void Game::Tick(double dt) {}
@@ -38,6 +38,6 @@ glm::uint16_t* Game::getIndices(size_t& count) {
 }
 void Game::Shutdown() {
   levelRI.reset();
- // lampRI.reset();
+  // lampRI.reset();
   level.reset();
 }

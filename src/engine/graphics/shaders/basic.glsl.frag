@@ -3,7 +3,11 @@
 #extension GL_OES_standard_derivatives : enable
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0) uniform vLit_global_UniformBufferObject {
+#define vLIT_GLOBAL_UBO_BINDING 0
+#define vLIT_MODEL_UBO_BINDING  1
+#define vLIT_IMAGE_UBO_BINDING  2
+
+layout(binding = 0, set=vLIT_GLOBAL_UBO_BINDING) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
   vec4 lightDir;
@@ -11,11 +15,8 @@ layout(binding = 0) uniform vLit_global_UniformBufferObject {
 }
 gubo;
 
-layout(binding = 1) uniform vLit_object_UniformBufferObject {
-  mat4 model;
-  mat4 mvp;
-}
-mubo;
+layout(binding = 0, set=vLIT_IMAGE_UBO_BINDING) uniform sampler2D texSampler;
+
 
 flat layout(location = 0) in float intensity;
 layout(location = 1) in vec3 tileColour;
@@ -24,7 +25,6 @@ layout(location = 3) in vec3 barry;
 layout(location = 4) in vec3 fragVert;
 flat layout(location = 5) in vec3 normal;
 
-layout(binding = 2) uniform sampler2D texSampler;
 
 layout(location = 0) out vec4 outColor;
 

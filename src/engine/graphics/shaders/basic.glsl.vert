@@ -1,7 +1,9 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#define vLIT_GLOBAL_UBO_BINDING 0
+#define vLIT_MODEL_UBO_BINDING 1
 
-layout(binding = 0) uniform vLit_global_UniformBufferObject {
+layout(binding = 0, set = vLIT_GLOBAL_UBO_BINDING) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
   vec4 lightDir;
@@ -9,9 +11,7 @@ layout(binding = 0) uniform vLit_global_UniformBufferObject {
 }
 gubo;
 
-layout(binding = 1) uniform vLit_object_UniformBufferObject {
-  mat4 model;
-}
+layout(binding = 0, set = vLIT_MODEL_UBO_BINDING) uniform vLit_object_UniformBufferObject { mat4 model; }
 mubo;
 
 layout(location = 0) in vec3 inPosition;

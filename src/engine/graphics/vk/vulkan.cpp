@@ -9,6 +9,7 @@
 #include "vulkan_internals.h"
 #include <functional>
 #include <iostream>
+#include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
 std::unique_ptr<ContextInfo> ctx;
@@ -21,9 +22,8 @@ std::unique_ptr<SyncObjects> syncObjects;
 //
 std::unique_ptr<DescriptorPool> descriptorPool;
 //
-//std::vector<vkRenderableItem*> totalRIs;
+// std::vector<vkRenderableItem*> totalRIs;
 std::unordered_multimap<RenderableItem::PIPELINE, vkRenderableItem*> totalRIs;
-
 
 void RebuildSwapChain() {
   vkDeviceWaitIdle(ctx->device);
@@ -36,7 +36,7 @@ void RebuildSwapChain() {
   renderPass = createRenderPass(ctx->device, swapchain->swapChainImageFormat);
   swapchain->InitFramebuffers(*renderPass);
 
-  descriptorPool = std::make_unique<DescriptorPool>(ctx->device, swapchain->swapChainImages);
+  descriptorPool = std::make_unique<DescriptorPool>(ctx->device, static_cast<uint32_t>(swapchain->swapChainImages.size()), VLIT_BINDINGS_COUNT);
 
   // Make pipleines
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
@@ -100,28 +100,16 @@ void VulkanBackend::drawFrame(double dt) {
 
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
 
-    auto pl_ri = totalRIs.equal_range((RenderableItem::PIPELINE)i);  
+    auto pl_ri = totalRIs.equal_range((RenderableItem::PIPELINE)i);
     for (auto gg = pl_ri.first; gg != pl_ri.second; gg++) {
       const vkRenderableItem& ri = *gg->second;
-
-
-     std::function<void(const vk::CommandBuffer&)> decriptorBinder = [&ri, a](const vk::CommandBuffer& c) {
-        pipelines[ri._pipeline]->BindReleventDescriptor(c, a);
+      std::function<void(const vk::CommandBuffer&)> decriptorBinder = [&ri, a](const vk::CommandBuffer& c) {
+        pipelines[ri._pipeline]->BindReleventDescriptor(c, a, &ri);
       };
-     /* if (ri._pipeline == RenderableItem::lit) {
-        static_cast<vLitPipeline*>(pipelines[i].get())->UpdateModelUniform(a);
-      }
-      */
-
-
       cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[ri._pipeline],
-                        *ri._vbuffer, ri._icount, decriptorBinder, a);
+                         *ri._vbuffer, ri._icount, decriptorBinder, a);
     }
   }
-  
-
-
-
 
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers[a], *syncObjects);
 }
@@ -132,16 +120,12 @@ void VulkanBackend::resize() {
   std::cout << "VK recreate" << std::endl;
 }
 
-vkRenderableItem::~vkRenderableItem() { 
-    _vbuffer.reset();
-}
+vkRenderableItem::~vkRenderableItem() { _vbuffer.reset(); }
 void vkRenderableItem::updateData(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount) {}
 
 vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount, RenderableItem::PIPELINE p)
     : RenderableItem(vertices, vcount, indices, icount, p) {
   totalRIs.insert({{p, this}});
-  //pipelines[p]->registerRI();
-
 
   std::vector<Vertex> convertedVertexes;
   size_t barrychuckle = 0;
@@ -180,18 +164,4 @@ vkRenderableItem::vkRenderableItem(Game::Vertex* vertices, uint32_t vcount, glm:
   _vbuffer->UploadIndex(indices, indices_size, cmdPool->commandPool, ctx->graphicsQueue);
 }
 
-void vkRenderableItem::setUniformModelMatrix(glm::mat4 m) {
-  pipelines[_pipeline]->updateRIUniform(this, m);
-  //_uniformData.model = m;
-  //  _uniformData.mvp = _uniformData.proj * _uniformData.view * m;
-}
-/*
-void vkRenderableItem::updateUniform() {
-  //my pipleine
-
-  // _uniformData.view = Engine::getViewMatrix();
-  // _uniformData.proj = Engine::getProjectionMatrix();
-  // setUniformModelMatrix(_uniformData.model);
-  // _uniformData.pointLight = Engine::getLightPos();
-}
-*/
+void vkRenderableItem::setUniformModelMatrix(glm::mat4 m) { pipelines[_pipeline]->updateRIUniform(this, m); }

@@ -174,24 +174,19 @@ DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::ve
 
 DescriptorSetLayout::~DescriptorSetLayout() { _logicalDevice.destroyDescriptorSetLayout(descriptorSetLayout); }
 
-
-DescriptorPool::DescriptorPool(const vk::Device& device, const std::vector<vk::Image>& swapChainImages) : _logicalDevice{device} {
-  vk::DescriptorPoolSize poolSize;
-  poolSize.type = vk::DescriptorType::eUniformBuffer;
-  poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
-
+DescriptorPool::DescriptorPool(const vk::Device& device, uint32_t frameCount, uint32_t descriptorCount) : _logicalDevice{device} {
   std::array<vk::DescriptorPoolSize, VLIT_BINDINGS_COUNT> poolSizes = {};
   poolSizes[vLIT_GLOBAL_UBO_BINDING].type = vk::DescriptorType::eUniformBuffer;
-  poolSizes[vLIT_GLOBAL_UBO_BINDING].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[vLIT_GLOBAL_UBO_BINDING].descriptorCount = descriptorCount;
   poolSizes[vLIT_MODEL_UBO_BINDING].type = vk::DescriptorType::eUniformBuffer;
-  poolSizes[vLIT_MODEL_UBO_BINDING].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[vLIT_MODEL_UBO_BINDING].descriptorCount = descriptorCount;
   poolSizes[vLIT_IMAGE_UBO_BINDING].type = vk::DescriptorType::eCombinedImageSampler;
-  poolSizes[vLIT_IMAGE_UBO_BINDING].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+  poolSizes[vLIT_IMAGE_UBO_BINDING].descriptorCount = descriptorCount;
 
   vk::DescriptorPoolCreateInfo poolInfo;
-  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.poolSizeCount = static_cast<uint32_t>(VLIT_BINDINGS_COUNT);
   poolInfo.pPoolSizes = poolSizes.data();
-  poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+  poolInfo.maxSets = frameCount * descriptorCount;
   descriptorPool = device.createDescriptorPool(poolInfo);
 }
 
@@ -210,7 +205,7 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
 
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
-  //upload image data into stagingBuffer
+  // upload image data into stagingBuffer
   {
     stagingBuffer = createBuffer(_logicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
     stagingBufferMemory =
@@ -224,17 +219,17 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
   }
 
   std::cout << "Loaded image: " << imagename << " " << texWidth << "x" << texHeight << " size:" << imageSize << std::endl;
-  //create a new memory area as an image
+  // create a new memory area as an image
   createImage(pdevice, texWidth, texHeight, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal,
               vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, _image,
               _imageMemory);
 
-  //copy from stagingBuffer
+  // copy from stagingBuffer
   transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
   copyBufferToImage(stagingBuffer, _image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
   transitionImageLayout(_image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-  //delete stagingBuffer
+  // delete stagingBuffer
   device.destroyBuffer(stagingBuffer);
   device.freeMemory(stagingBufferMemory);
 

@@ -183,6 +183,9 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
   if (BestGPU == VK_NULL_HANDLE) {
     throw std::runtime_error("failed to find a suitable GPU!");
   }
+  VkPhysicalDeviceProperties props;
+  vkGetPhysicalDeviceProperties(BestGPU, &props);
+  device_minUniformBufferOffsetAlignment = (uint32_t)props.limits.minUniformBufferOffsetAlignment;
   std::cout << "Using Device " << BestGPU << std::endl;
   return BestGPU;
 }
