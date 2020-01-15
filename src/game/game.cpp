@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include "geometry.h"
 
 std::unique_ptr<Game::Level> level;
 std::unique_ptr<RenderableItem> levelRI;
@@ -18,6 +19,10 @@ void Game::StartUp() {
   levelRI = std::make_unique<vkRenderableItem>(&level->_verts[0], static_cast<uint32_t>(level->_verts.size()), &level->_inidces[0],
                                                static_cast<uint32_t>(level->_inidces.size()), RenderableItem::lit);
   levelRI->setUniformModelMatrix(glm::mat4(1.0f));
+
+  simpleGeo box = debugCube();
+ // lampRI = std::make_unique<vkRenderableItem>(box.v.data(), static_cast<uint32_t>(box.v.size()), box.i.data(), static_cast<uint32_t>(box.i.size()),RenderableItem::lit);
+//  lampRI->setUniformModelMatrix(glm::mat4(1.0f));
 }
 
 void Game::Tick(double dt) {}
@@ -33,5 +38,6 @@ glm::uint16_t* Game::getIndices(size_t& count) {
 }
 void Game::Shutdown() {
   levelRI.reset();
+ // lampRI.reset();
   level.reset();
 }

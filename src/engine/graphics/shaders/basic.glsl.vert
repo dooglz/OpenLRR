@@ -11,7 +11,6 @@ gubo;
 
 layout(binding = 1) uniform vLit_object_UniformBufferObject {
   mat4 model;
-  mat4 mvp;
 }
 mubo;
 
@@ -30,8 +29,8 @@ flat layout(location = 5) out vec3 outNormal;
 void main() {
   fragVert = inPosition;
   outNormal = inNormal;
-
-  gl_Position = mubo.mvp * vec4(inPosition, 1.0);
+  const mat4 mvp = gubo.proj * gubo.view * mubo.model;
+  gl_Position = mvp * vec4(inPosition, 1.0);
 
   outBarry = inBarry;
   // vec3 lightDir = normalize(vec3(0,-10.f,-10.f));

@@ -25,9 +25,6 @@ struct vkRenderableItem : public RenderableItem {
   void updateData(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount) override;
   ~vkRenderableItem() override;
   void setUniformModelMatrix(glm::mat4 m) override;
-  void updateUniform() override;
-  //
-
   std::unique_ptr<VertexBuffer> _vbuffer;
 };
 #endif // OPENLRR_VULKAN_H

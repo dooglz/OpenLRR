@@ -11,8 +11,8 @@ struct simpleGeo {
 simpleGeo debugCube() {
   simpleGeo g;
 
-  g.v.reserve(24);
-  g.i.reserve(24);
+  g.v.resize(24);
+  g.i.resize(24);
   // debug cube - clockwise
   // const glm::vec3 dbgCubePos(5, 5, 5);
 
@@ -76,5 +76,5 @@ simpleGeo debugCube() {
     v.n = glm::vec3(1, 0, 0);
     v.c = glm::vec3(0, 1, 0);
   }
-
+  return g;
 }

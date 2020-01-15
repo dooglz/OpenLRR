@@ -44,9 +44,11 @@ static std::vector<char> readFile(const std::string& filename) {
   return buffer;
 }
 
+
+
 Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass,
                    const vk::PipelineVertexInputStateCreateInfo& vertexInputInfo, vk::DescriptorSetLayout descriptorSetLayout)
-    : _logicalDevice{device} {
+    : _logicalDevice{device}, _descriptorlayout{descriptorSetLayout} {
   const std::string shaderName = "basic";
   auto vertShaderCode = readFile("res/shaders/" + shaderName + ".vert.spv");
   auto fragShaderCode = readFile("res/shaders/" + shaderName + ".frag.spv");
@@ -152,6 +154,8 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
 }
 
 Pipeline::~Pipeline() {
+  _descriptorSets.clear();
+  _logicalDevice.destroyDescriptorSetLayout(_descriptorlayout);
   vkDestroyPipeline(_logicalDevice, graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(_logicalDevice, pipelineLayout, nullptr);
 }
@@ -225,21 +229,17 @@ uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& 
   }
   return imageIndex;
 }
-vk::DescriptorSetLayout vLitPipeline::_layout;
+
 vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
     : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), getDescriptorSetLayout(device)) {}
 
 vLitPipeline::~vLitPipeline() {
-  _logicalDevice.destroyDescriptorSetLayout(_layout);
-  _descriptorSets.clear();
   _texture.reset();
   _modelUniform.reset();
   _globalUniform.reset();
 }
 
 const vk::DescriptorSetLayout vLitPipeline::getDescriptorSetLayout(const vk::Device& device) {
- 
-  if (!_layout) {
     std::vector<vk::DescriptorSetLayoutBinding> bindings;
     vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
     globalUboLayoutBinding.binding = vLIT_GLOBAL_UBO_BINDING;
@@ -267,9 +267,7 @@ const vk::DescriptorSetLayout vLitPipeline::getDescriptorSetLayout(const vk::Dev
     vk::DescriptorSetLayoutCreateInfo layoutInfo;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = bindings.data();
-    _layout = device.createDescriptorSetLayout(layoutInfo);
-  }
-  return _layout;
+    return device.createDescriptorSetLayout(layoutInfo);
 }
 
 void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, const std::vector<vk::Image>& swapChainImages,
@@ -286,7 +284,7 @@ void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, 
 
   // DescriptorSets
   {
-    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), getDescriptorSetLayout(_logicalDevice));
+    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), _descriptorlayout);
     vk::DescriptorSetAllocateInfo allocInfo;
     allocInfo.descriptorPool = descriptorPool;
     allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
@@ -343,17 +341,29 @@ void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, ui
   );
 }
 
-void vLitPipeline::UpdateGlobalUniform(uint32_t index) {
+/*
+void vLitPipeline::UpdateModelUniform(uint32_t index) {
+  (*_modelUniform)[0].model = glm::mat4(1.0f);
+  (*_modelUniform)[0].mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
+  _modelUniform->sendToGpu(index);
+}
+*/
+
+
+void vLitPipeline::prepFrame(uint32_t index) {
+  //update global
   vLit_global_UniformBufferObject uniformData = {};
   uniformData.view = Engine::getViewMatrix();
   uniformData.proj = Engine::getProjectionMatrix();
   uniformData.pointLight = glm::vec4(Engine::getLightPos(), 0);
   uniformData.lightDir = glm::vec4(0.0f);
   _globalUniform->updateUniformBuffer(index, &uniformData);
+  //send locals down - should laready be internally updated
+  _modelUniform->sendToGpu(index);
 }
 
-void vLitPipeline::UpdateModelUniform(uint32_t index) {
+void vLitPipeline::updateRIUniform(vkRenderableItem* me, const glm::mat4& m) {
   (*_modelUniform)[0].model = glm::mat4(1.0f);
-  (*_modelUniform)[0].mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
-  _modelUniform->sendToGpu(index);
+ //(*_modelUniform)[0].mvp = glm::mat4(Engine::getProjectionMatrix() * Engine::getViewMatrix() * glm::dmat4(1.0f));
+
 }

@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <iostream>
 #include <vulkan/vulkan.hpp>
 
 #include "vulkan_pipeline.h"
@@ -33,7 +34,6 @@ struct vLit_global_UniformBufferObject {
 
 struct vLit_object_UniformBufferObject {
   glm::mat4 model;
-  glm::mat4 mvp;
 };
 
 const bool ENABLE_VSYNC = false;

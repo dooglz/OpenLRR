@@ -8,7 +8,7 @@
 #include "../../game/game_graphics.h"
 
 struct RenderableItem {
-  enum PIPELINE { lit, unlit, PIPELINE_COUNT };
+  enum PIPELINE { lit, PIPELINE_COUNT };
   RenderableItem(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount, PIPELINE p)
       : _pipeline{p}, _vcount{vcount}, _icount{icount} {}
   virtual void updateData(Game::Vertex* vertices, uint32_t vcount, glm::uint16_t* indices, uint32_t icount) = 0;
@@ -17,7 +17,7 @@ struct RenderableItem {
   uint32_t _vcount;
   uint32_t _icount;
   virtual void setUniformModelMatrix(glm::mat4 m) = 0;
-  virtual void updateUniform() = 0;
+ // virtual void updateUniform() = 0;
 };
 
 class GraphicsBackend {
