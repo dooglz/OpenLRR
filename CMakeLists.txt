@@ -67,12 +67,11 @@ target_link_libraries_system (OpenLRR Vulkan::Vulkan glfw glm::glm fastNoise stb
 #target_include_directories(OpenLRR SYSTEM PRIVATE Vulkan::Vulkan)
 
 
-find_program(GLSLC glslc HINTS $ENV{VULKAN_SDK}/bin)
-message(${GLSLC})
-if(EXISTS "${Vulkan_INCLUDE_DIR}/../Bin32/glslc")
- get_filename_component(GLSLC "${Vulkan_INCLUDE_DIR}/../Bin32/glslc" ABSOLUTE)
+find_program(GLSLC glslc HINTS "$ENV{VULKAN_SDK}/bin" "${Vulkan_INCLUDE_DIR}/../Bin32/glslc")
+if(NOT GLSLC)
+	 message("Can't find glslc" )
 else()
- message("Can't find glslc" )
+	message(STATUS "GLSLC: ${GLSLC}") 
 endif()
 
 file(GLOB shaderfiles ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/graphics/shaders/*.glsl.*)
@@ -80,10 +79,9 @@ set(ShaderOutputDir ${CMAKE_BINARY_DIR}/$<CONFIGURATION>/res/shaders/)
 foreach(loop_var ${shaderfiles})
 	  string(REGEX REPLACE "(\.glsl|^.*shaders\/)" "" stripfile ${loop_var})
 	  set(spvout ${ShaderOutputDir}${stripfile}.spv)
-	  set(shaderCMD ${shaderCMD} ${GLSLC} $<SHELL_PATH:${loop_var}> -o $<SHELL_PATH:${spvout}> \r\n\t)
+	  set(shaderCMD ${shaderCMD} echo Compiling shader: ${loop_var} to: ${spvout} \r\n\t ${GLSLC} $<SHELL_PATH:${loop_var}> -o $<SHELL_PATH:${spvout}> \r\n\t)
 endforeach(loop_var)
-message(${GLSLC})
-message(${shaderCMD})
+
 add_custom_target(CompileShaders ALL 
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${ShaderOutputDir}
 	COMMAND ${shaderCMD}
