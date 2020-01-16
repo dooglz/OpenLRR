@@ -186,6 +186,7 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
   VkPhysicalDeviceProperties props;
   vkGetPhysicalDeviceProperties(BestGPU, &props);
   device_minUniformBufferOffsetAlignment = (uint32_t)props.limits.minUniformBufferOffsetAlignment;
+  device_maxDescriptorSetUniformBuffersDynamic = props.limits.maxDescriptorSetUniformBuffersDynamic;
   std::cout << "Using Device " << BestGPU << std::endl;
   return BestGPU;
 }

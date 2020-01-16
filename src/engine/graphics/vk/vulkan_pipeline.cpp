@@ -13,6 +13,8 @@
 #include <vulkan/vulkan.hpp>
 
 uint32_t device_minUniformBufferOffsetAlignment;
+uint32_t device_maxDescriptorSetUniformBuffersDynamic;
+
 VkShaderModule createShaderModule(const std::vector<char>& code, const vk::Device& device) {
   VkShaderModuleCreateInfo createInfo = {};
   createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -243,6 +245,7 @@ vLitPipeline::~vLitPipeline() {
 
 const std::vector<vk::DescriptorSetLayout> vLitPipeline::getDescriptorSetLayout(const vk::Device& device) {
 
+  std::cout << "max dynamic buffers: " << device_maxDescriptorSetUniformBuffersDynamic << std::endl;
   vk::DescriptorSetLayoutBinding globalUboLayoutBinding;
   globalUboLayoutBinding.binding = 0;
   globalUboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;

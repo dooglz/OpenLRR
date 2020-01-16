@@ -37,13 +37,16 @@ struct vLit_object_UniformBufferObject {
 };
 
 const bool ENABLE_VSYNC = false;
+const bool FORCE_FLUSH = true; // Flush anyway, even if we don't need to, because osx.
+
 extern uint32_t device_minUniformBufferOffsetAlignment;
+extern uint32_t device_maxDescriptorSetUniformBuffersDynamic;
 
 inline size_t alignedSize(size_t sz, size_t align) { return ((sz + align - 1) / align) * align; }
 
 vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk::BufferUsageFlags usage);
 vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::MemoryPropertyFlags& properties,
-                                        const vk::Buffer& buffer);
+                                        const vk::Buffer& buffer, vk::DeviceSize* ds_ret = nullptr);
 
 // things that exist for whole applicaiton
 struct ContextInfo {
@@ -256,7 +259,7 @@ private:
 };
 
 struct CmdBuffers {
-  struct RenderableToken{
+  struct RenderableToken {
     const VertexBuffer& vbuf;
     const uint32_t vcount;
     const std::function<void(const vk::CommandBuffer&)> descriptorSetFunc;
@@ -275,7 +278,8 @@ struct CmdBuffers {
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
               std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index);
   void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
-              const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, std::vector<RenderableToken> tokens, uint32_t index);
+              const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, std::vector<RenderableToken> tokens,
+              uint32_t index);
   // wipe any commandlist that includes this VertexBuffer.
   static void invalidate(const VertexBuffer* vbuf);
   ~CmdBuffers();

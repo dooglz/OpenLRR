@@ -38,7 +38,7 @@ vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk:
 }
 
 vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::MemoryPropertyFlags& properties,
-                                        const vk::Buffer& buffer) {
+                                        const vk::Buffer& buffer, vk::DeviceSize* ds_ret) {
   vk::MemoryRequirements memRequirements;
   device.getBufferMemoryRequirements(buffer, &memRequirements);
   vk::MemoryAllocateInfo allocInfo;
@@ -49,6 +49,9 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
   std::cout << "Buffer created on device, Size: " << memRequirements.size << " " << devmem << std::endl;
 
   device.bindBufferMemory(buffer, devmem, 0);
+  if (ds_ret != nullptr) {
+    *ds_ret = memRequirements.size;
+  }
   return devmem;
 }
 
@@ -77,8 +80,13 @@ void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::B
   vk::DeviceMemory stagingBufferMemory = AllocateBufferOnDevice(
       device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer);
 
-  void* data = device.mapMemory(stagingBufferMemory, 0, uploadSize);
-  memcpy(data, inputdata, uploadSize);
+
+  auto gpuData = device.mapMemory(stagingBufferMemory, 0, uploadSize);
+  std::memcpy(gpuData, inputdata, static_cast<size_t>(uploadSize));
+  if(FORCE_FLUSH){
+    vk::MappedMemoryRange mem_range(stagingBufferMemory,0,uploadSize);
+    device.flushMappedMemoryRanges(mem_range);
+  }
   device.unmapMemory(stagingBufferMemory);
 
   CopyBufferGeneric(stagingBuffer, buffer, uploadSize, cmdpool, device, graphicsQueue);
@@ -160,9 +168,14 @@ Uniform::~Uniform() {
   }
 }
 void Uniform::updateUniformBuffer(uint32_t currentImage, const void* uboData, uint32_t which) {
-  auto data = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
-  memcpy(data, uboData, _size);
+  auto gpuData = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
+  std::memcpy(gpuData, uboData, _size);
+  if(FORCE_FLUSH){
+    vk::MappedMemoryRange mem_range(uniformBuffersMemory[currentImage],0,VK_WHOLE_SIZE);
+    _logicalDevice.flushMappedMemoryRanges(mem_range);
+  }
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
+
 }
 
 DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings)
@@ -179,7 +192,7 @@ DescriptorPool::DescriptorPool(const vk::Device& device, uint32_t frameCount, ui
   std::array<vk::DescriptorPoolSize, VLIT_BINDINGS_COUNT> poolSizes = {};
   poolSizes[vLIT_GLOBAL_UBO_BINDING].type = vk::DescriptorType::eUniformBuffer;
   poolSizes[vLIT_GLOBAL_UBO_BINDING].descriptorCount = descriptorCount;
-  poolSizes[vLIT_MODEL_UBO_BINDING].type = vk::DescriptorType::eUniformBuffer;
+  poolSizes[vLIT_MODEL_UBO_BINDING].type = vk::DescriptorType::eUniformBufferDynamic;
   poolSizes[vLIT_MODEL_UBO_BINDING].descriptorCount = descriptorCount;
   poolSizes[vLIT_IMAGE_UBO_BINDING].type = vk::DescriptorType::eCombinedImageSampler;
   poolSizes[vLIT_IMAGE_UBO_BINDING].descriptorCount = descriptorCount;
@@ -204,18 +217,36 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
     throw std::runtime_error("failed to load texture image!");
   }
 
+  // Check for linear supportability
+  bool needBlit = true;
+  vk::ImageFormatProperties ifrmt;
+  vk::FormatProperties frmt;
+  pdevice.getFormatProperties(vk::Format::eR8G8B8A8Unorm, &frmt);
+  pdevice.getImageFormatProperties(vk::Format::eR8G8B8A8Unorm, vk::ImageType::e2D, vk::ImageTiling::eOptimal,
+                                   vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::ImageCreateFlags(), &ifrmt);
+
+  assert((frmt.linearTilingFeatures | frmt.optimalTilingFeatures) & vk::FormatFeatureFlagBits::eSampledImage);
+  if (frmt.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage) {
+    // linear format supporting the required texture
+    needBlit = false;
+  }
+
+  VkDeviceSize dev_imagesize;
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
   // upload image data into stagingBuffer
   {
     stagingBuffer = createBuffer(_logicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingBufferMemory =
-        AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostVisible, stagingBuffer);
+    stagingBufferMemory = AllocateBufferOnDevice(device, pdevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                 stagingBuffer, &dev_imagesize);
 
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vkUnmapMemory(device, stagingBufferMemory);
+    auto gpuData = device.mapMemory(stagingBufferMemory, 0, imageSize);
+    std::memcpy(gpuData, pixels, static_cast<size_t>(imageSize));
+    if(FORCE_FLUSH){
+      vk::MappedMemoryRange mem_range(stagingBufferMemory,0,imageSize);
+      device.flushMappedMemoryRanges(mem_range);
+    }
+    device.unmapMemory(stagingBufferMemory);
     stbi_image_free(pixels);
   }
 
@@ -234,6 +265,7 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
   device.destroyBuffer(stagingBuffer);
   device.freeMemory(stagingBufferMemory);
 
+  // auto gg = pdevice.getImageFormatProperties();
   // ImageView
   {
     vk::ImageViewCreateInfo createInfo;
@@ -257,7 +289,7 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
     samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
     samplerInfo.anisotropyEnable = VK_FALSE;
     samplerInfo.maxAnisotropy = 16;
-    samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+    samplerInfo.borderColor = vk::BorderColor::eIntOpaqueWhite;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable = VK_FALSE;
     samplerInfo.compareOp = vk::CompareOp::eAlways;
