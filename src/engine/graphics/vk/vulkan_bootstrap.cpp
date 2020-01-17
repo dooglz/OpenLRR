@@ -117,13 +117,9 @@ QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, const vk::
   return indices;
 }
 QueueFamilyIndices findQueueFamilies(const struct ContextInfo::PhyDevSurfKHR pdsk) { return findQueueFamilies(pdsk.device, pdsk.surface); }
-bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
-  uint32_t extensionCount;
-  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+bool checkDeviceExtensionSupport(const vk::PhysicalDevice& pdevice) {
 
-  std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
+  std::vector<vk::ExtensionProperties> availableExtensions = pdevice.enumerateDeviceExtensionProperties();
   std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
   for (const auto& extension : availableExtensions) {
@@ -133,18 +129,14 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
   return requiredExtensions.empty();
 }
 
-VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfaceKHR& surface) {
-  uint32_t deviceCount = 0;
-  vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+vk::PhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfaceKHR& surface) {
+  std::vector<vk::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
 
-  if (deviceCount == 0) {
+  if (devices.empty()) {
     throw std::runtime_error("failed to find GPUs with Vulkan support!");
   }
 
-  std::vector<VkPhysicalDevice> devices(deviceCount);
-  vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-  std::vector<VkPhysicalDevice> compatableDevices;
+  std::vector<vk::PhysicalDevice> compatableDevices;
   for (const auto& device : devices) {
     if (findQueueFamilies(device, surface).isComplete() && checkDeviceExtensionSupport(device)) {
       compatableDevices.push_back(device);
@@ -152,22 +144,20 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
   }
 
   vk::DeviceSize biggestRamAmount = 0;
-  VkPhysicalDevice BestGPU = VK_NULL_HANDLE;
+  vk::PhysicalDevice BestGPU;
 
   std::cout << "comaptible GPU devices:"
             << "\n";
 
   for (const auto g : compatableDevices) {
-    VkPhysicalDeviceProperties dp;
-    vkGetPhysicalDeviceProperties(g, &dp);
+    auto dp = g.getProperties();
     vk::DeviceSize memsize = 0;
     {
-      auto memoryProps = VkPhysicalDeviceMemoryProperties{};
-      vkGetPhysicalDeviceMemoryProperties(g, &memoryProps);
+      auto memoryProps = g.getMemoryProperties();
       auto heapsPointer = memoryProps.memoryHeaps;
-      auto heaps = std::vector<VkMemoryHeap>(heapsPointer, heapsPointer + memoryProps.memoryHeapCount);
+      auto heaps = std::vector<vk::MemoryHeap>(heapsPointer, heapsPointer + memoryProps.memoryHeapCount);
       for (const auto& heap : heaps) {
-        if (heap.flags & VkMemoryHeapFlagBits::VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+        if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal) {
           memsize = heap.size;
           if (memsize > biggestRamAmount) {
             biggestRamAmount = memsize;
@@ -180,11 +170,10 @@ VkPhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfac
     std::cout << "Addr: " << g << " Device " << dp.deviceID << " - " << dp.deviceName << " - " << dp.driverVersion
               << " vram: " << BytesToString(memsize) << "\n";
   }
-  if (BestGPU == VK_NULL_HANDLE) {
+  if (BestGPU == vk::PhysicalDevice(nullptr)) {
     throw std::runtime_error("failed to find a suitable GPU!");
   }
-  VkPhysicalDeviceProperties props;
-  vkGetPhysicalDeviceProperties(BestGPU, &props);
+  vk::PhysicalDeviceProperties props = BestGPU.getProperties();
   device_minUniformBufferOffsetAlignment = (uint32_t)props.limits.minUniformBufferOffsetAlignment;
   device_maxDescriptorSetUniformBuffersDynamic = props.limits.maxDescriptorSetUniformBuffersDynamic;
   std::cout << "Using Device " << BestGPU << std::endl;

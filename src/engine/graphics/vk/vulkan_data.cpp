@@ -220,9 +220,9 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
     needBlit = false;
   }
 
-  VkDeviceSize dev_imagesize;
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
+  vk::DeviceSize dev_imagesize;
+  vk::Buffer stagingBuffer;
+  vk::DeviceMemory stagingBufferMemory;
   // upload image data into stagingBuffer
   {
     stagingBuffer = createBuffer(_logicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc);

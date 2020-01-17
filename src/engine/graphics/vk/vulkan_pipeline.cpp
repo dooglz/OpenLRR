@@ -15,18 +15,11 @@
 uint32_t device_minUniformBufferOffsetAlignment;
 uint32_t device_maxDescriptorSetUniformBuffersDynamic;
 
-VkShaderModule createShaderModule(const std::vector<char>& code, const vk::Device& device) {
-  VkShaderModuleCreateInfo createInfo = {};
-  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+vk::ShaderModule createShaderModule(const std::vector<char>& code, const vk::Device& device) {
+  vk::ShaderModuleCreateInfo createInfo;
   createInfo.codeSize = code.size();
   createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-  VkShaderModule shaderModule;
-  if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create shader module!");
-  }
-
-  return shaderModule;
+  return device.createShaderModule(createInfo);
 }
 
 // It can't be a string, as there are \0 chars everywhere

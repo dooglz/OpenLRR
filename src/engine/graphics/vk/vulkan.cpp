@@ -69,7 +69,7 @@ void VulkanBackend::startup() {
 }
 
 void VulkanBackend::shutdown() {
-  vkDeviceWaitIdle(ctx->device);
+  ctx->device.waitIdle();
   descriptorPool.reset();
   syncObjects.reset();
   cmdBuffers.reset();
