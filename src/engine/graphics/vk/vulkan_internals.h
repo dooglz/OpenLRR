@@ -52,9 +52,9 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
 struct ContextInfo {
   ContextInfo();
   ~ContextInfo();
-  const vk::Instance instance;
-  const vk::SurfaceKHR surface;
-  const vk::PhysicalDevice physicalDevice;
+  vk::Instance instance;
+  vk::SurfaceKHR surface;
+  vk::PhysicalDevice physicalDevice;
   vk::Queue graphicsQueue;
   vk::Queue presentQueue;
   vk::Device device; // AKA logical device
@@ -127,8 +127,8 @@ struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 normal;
   glm::vec3 barry;
   // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
-  Vertex(glm::vec3 p, glm::vec3 c) : pos{p}, color{c} {};
-  Vertex(const Game::Vertex& v) : pos{v.p}, color{v.c}, normal{v.n} {};
+  Vertex(glm::vec3 p, glm::vec3 c, glm::vec3 n = glm::vec3(0.f), glm::vec3 b = glm::vec3(0.f)) : pos{p}, color{c}, normal{n}, barry{b} {};
+  Vertex(const Game::Vertex& v) : Vertex{v.p, v.c, v.n} {};
   static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
@@ -178,7 +178,7 @@ void RebuildSwapChain();
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync);
 
 // GLFW bridge, TODO make interface headder
-VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance);
+VkSurfaceKHR CreateVKWindowSurface(vk::Instance& instance);
 // TODO, wrap in class
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
 
@@ -267,7 +267,7 @@ struct CmdBuffers {
   struct commandBufferCollection {
     vk::CommandBuffer commandBuffer;
     std::set<const VertexBuffer*> referencedVB;
-    size_t hashedState;
+    size_t hashedState = 0;
     vk::Fence* fence = nullptr;
     void Reset(const vk::Device& device);
   };
@@ -328,4 +328,4 @@ private:
 };
 
 void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
-                       const VkSwapchainKHR& swapChain, CmdBuffers::commandBufferCollection& commandBuffer, SyncObjects& sync);
+                       const vk::SwapchainKHR& swapChain, CmdBuffers::commandBufferCollection& commandBuffer, SyncObjects& sync);

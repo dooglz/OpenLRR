@@ -200,10 +200,9 @@ void SwapChainInfo::InitFramebuffers(const vk::RenderPass& renderPass) {
   swapChainFramebuffers.resize(swapChainImageViews.size());
 
   for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-    VkImageView attachments[] = {swapChainImageViews[i]};
+    vk::ImageView attachments[] = {swapChainImageViews[i]};
 
-    VkFramebufferCreateInfo framebufferInfo = {};
-    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    vk::FramebufferCreateInfo framebufferInfo;
     framebufferInfo.renderPass = renderPass;
     framebufferInfo.attachmentCount = 1;
     framebufferInfo.pAttachments = attachments;
@@ -217,21 +216,19 @@ void SwapChainInfo::InitFramebuffers(const vk::RenderPass& renderPass) {
 }
 
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync) {
-  uint32_t imageIndex;
-  VkResult result =
-      vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], VK_NULL_HANDLE, &imageIndex);
-  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+  const auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], nullptr);
+  if (result.result == vk::Result::eErrorOutOfDateKHR) {
     std::cout << "SwapChain out of date" << std::endl;
     // RebuildSwapChain();
     // try now
     return -1;
-    result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], VK_NULL_HANDLE, &imageIndex);
+    // result = device.acquireNextImageKHR(swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], nullptr);
   }
 
-  if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+  if (result.result != vk::Result::eSuccess /*&& result != VK_SUBOPTIMAL_KHR*/) {
     throw std::runtime_error("failed to acquire swap chain image!");
   }
-  return imageIndex;
+  return result.value;
 }
 
 vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)

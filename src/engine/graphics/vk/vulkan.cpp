@@ -26,7 +26,7 @@ std::unique_ptr<DescriptorPool> descriptorPool;
 std::unordered_multimap<RenderableItem::PIPELINE, vkRenderableItem*> totalRIs;
 
 void RebuildSwapChain() {
-  vkDeviceWaitIdle(ctx->device);
+  ctx->device.waitIdle();
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
     pipelines[i].reset();
   }
@@ -110,7 +110,7 @@ void VulkanBackend::drawFrame(double dt) {
     }
     cmdBuffers->Record(ctx->device, *renderPass, swapchain->swapChainExtent, swapchain->swapChainFramebuffers, *pipelines[i], tokens, a);
   }
- 
+
   drawFrameInternal(a, ctx->device, ctx->graphicsQueue, ctx->presentQueue, swapchain->swapChain, cmdBuffers->commandBuffers[a], *syncObjects);
 }
 

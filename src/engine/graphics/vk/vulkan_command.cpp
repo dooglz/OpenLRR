@@ -16,7 +16,7 @@ void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const 
   cmdBuffer.bindVertexBuffers(0, vbuf.vertexBuffer, {0});
   cmdBuffer.bindIndexBuffer(vbuf.indexBuffer, 0, vk::IndexType::eUint16);
   descriptorSetFunc(cmdBuffer);
-  vkCmdDrawIndexed(cmdBuffer, count, 1, 0, 0, 0);
+  cmdBuffer.drawIndexed(count, 1, 0, 0, 0);
 }
 
 template <typename T, typename... Rest> void hash_combine(std::size_t& seed, const T& v, const Rest&... rest) {
@@ -34,14 +34,14 @@ struct RecordInfo {
 struct RecordInfoHash {
   std::size_t operator()(RecordInfo const& s) const noexcept {
     std::size_t h = 0;
-    hash_combine(h, (void*)s.renderPass, (void*)&s.pipeline, (void*)&s.swapChainExtent, s.index, s.tokens.size());
+    hash_combine(h, static_cast<const void*>(&s.renderPass), static_cast<const void*>(&s.pipeline), static_cast<const void*>(&s.swapChainExtent),
+                 s.index, s.tokens.size());
     for (const auto& t : s.tokens) {
-      hash_combine(h, (void*)&t.vbuf, t.vcount);
+      hash_combine(h, static_cast<const void*>(&t.vbuf), t.vcount);
     }
     return h;
   }
 };
-
 
 void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
                         const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, std::vector<RenderableToken> tokens,
@@ -91,10 +91,7 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
                         const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf,
                         uint32_t vcount, std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index) {
   return Record(device, renderPass, swapChainExtent, swapChainFramebuffers, pipeline, {{vbuf, vcount, descriptorSetFunc}}, index);
-
 }
-
-
 
 void CmdBuffers::commandBufferCollection::Reset(const vk::Device& device) {
   if (fence != nullptr) {
@@ -162,7 +159,7 @@ OneOffCmdBuffer::~OneOffCmdBuffer() {
 }
 
 void drawFrameInternal(uint32_t imageIndex, const vk::Device& device, const vk::Queue& graphicsQueue, const vk::Queue& presentQueue,
-                       const VkSwapchainKHR& swapChain, CmdBuffers::commandBufferCollection& commandBuffer, SyncObjects& sync) {
+                       const vk::SwapchainKHR& swapChain, CmdBuffers::commandBufferCollection& commandBuffer, SyncObjects& sync) {
 
   device.waitForFences(1, &sync.inFlightFences[sync.currentFrame], VK_TRUE, UINT64_MAX);
 

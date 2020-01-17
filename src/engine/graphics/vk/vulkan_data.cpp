@@ -68,10 +68,10 @@ VertexBuffer::~VertexBuffer() {
   // Todo: check no command buffers have us included
   // This can't be done if there is a refernce to us in any command buffer.
   CmdBuffers::invalidate(this);
-  vkDestroyBuffer(_logicalDevice, vertexBuffer, nullptr);
-  vkFreeMemory(_logicalDevice, vertexBufferMemory, nullptr);
-  vkDestroyBuffer(_logicalDevice, indexBuffer, nullptr);
-  vkFreeMemory(_logicalDevice, indexBufferMemory, nullptr);
+  _logicalDevice.destroyBuffer(vertexBuffer);
+  _logicalDevice.freeMemory(vertexBufferMemory);
+  _logicalDevice.destroyBuffer(indexBuffer);
+  _logicalDevice.freeMemory(indexBufferMemory);
 }
 
 void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::Buffer& buffer, const vk::Device& device,
@@ -80,11 +80,10 @@ void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::B
   vk::DeviceMemory stagingBufferMemory = AllocateBufferOnDevice(
       device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer);
 
-
   auto gpuData = device.mapMemory(stagingBufferMemory, 0, uploadSize);
   std::memcpy(gpuData, inputdata, static_cast<size_t>(uploadSize));
-  if(FORCE_FLUSH){
-    vk::MappedMemoryRange mem_range(stagingBufferMemory,0,uploadSize);
+  if (FORCE_FLUSH) {
+    vk::MappedMemoryRange mem_range(stagingBufferMemory, 0, VK_WHOLE_SIZE);
     device.flushMappedMemoryRanges(mem_range);
   }
   device.unmapMemory(stagingBufferMemory);
@@ -139,15 +138,6 @@ void VertexBuffer::CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& ds
   device.freeCommandBuffers(cmdpool, commandBuffer);
 }
 
-void createDescriptorSetLayout() {
-  VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-  uboLayoutBinding.binding = 0;
-  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uboLayoutBinding.descriptorCount = 1;
-
-  // vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-}
-
 Uniform::Uniform(size_t uboSize, size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice)
     : _size{uboSize}, _qty{qty}, _logicalDevice(device) {
   uniformBuffers.resize(_qty);
@@ -170,12 +160,11 @@ Uniform::~Uniform() {
 void Uniform::updateUniformBuffer(uint32_t currentImage, const void* uboData, uint32_t which) {
   auto gpuData = _logicalDevice.mapMemory(uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
   std::memcpy(gpuData, uboData, _size);
-  if(FORCE_FLUSH){
-    vk::MappedMemoryRange mem_range(uniformBuffersMemory[currentImage],0,VK_WHOLE_SIZE);
+  if (FORCE_FLUSH) {
+    vk::MappedMemoryRange mem_range(uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
     _logicalDevice.flushMappedMemoryRanges(mem_range);
   }
   _logicalDevice.unmapMemory(uniformBuffersMemory[currentImage]);
-
 }
 
 DescriptorSetLayout::DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings)
@@ -211,7 +200,7 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
   int texWidth, texHeight, texChannels;
   const std::string imagename = "gravel09_col_sm.jpg";
   stbi_uc* pixels = stbi_load(std::string("res/" + imagename).c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-  VkDeviceSize imageSize = texWidth * texHeight * 4;
+  VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth) * static_cast<VkDeviceSize>(texHeight) * 4;
 
   if (!pixels) {
     throw std::runtime_error("failed to load texture image!");
@@ -242,8 +231,8 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
 
     auto gpuData = device.mapMemory(stagingBufferMemory, 0, imageSize);
     std::memcpy(gpuData, pixels, static_cast<size_t>(imageSize));
-    if(FORCE_FLUSH){
-      vk::MappedMemoryRange mem_range(stagingBufferMemory,0,imageSize);
+    if (FORCE_FLUSH) {
+      vk::MappedMemoryRange mem_range(stagingBufferMemory, 0, VK_WHOLE_SIZE);
       device.flushMappedMemoryRanges(mem_range);
     }
     device.unmapMemory(stagingBufferMemory);

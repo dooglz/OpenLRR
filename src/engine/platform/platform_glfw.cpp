@@ -87,7 +87,7 @@ void processInput(GLFWwindow* window, double dt) {
       Engine::setCamRot(glm::normalize(angleAxis(-hRotSpeed, forward) * Engine::getCamRot()));
     }
     if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
-     // raise(SIGTRAP);
+      // raise(SIGTRAP);
       //__builtin_trap();
     }
   }
@@ -133,9 +133,9 @@ void platform::setWindowTitle(const std::string& str) {
   glfwSetWindowTitle(window, str.c_str());
 }
 
-VkSurfaceKHR CreateVKWindowSurface(const vk::Instance& instance) {
+VkSurfaceKHR CreateVKWindowSurface(vk::Instance& instance) {
   VkSurfaceKHR surface;
-  if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+  if (glfwCreateWindowSurface(static_cast<VkInstance>(instance), window, nullptr, &surface) != VK_SUCCESS) {
     throw std::runtime_error("failed to create window surface!");
   }
   return surface;

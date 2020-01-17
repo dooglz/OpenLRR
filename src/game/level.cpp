@@ -138,7 +138,7 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
   allIndices.clear();
   allIndices.resize(_tiles.size() * 6);
 
-  for (int i = 0; i < _tiles.size(); ++i) {
+  for (size_t i = 0; i < _tiles.size(); ++i) {
     Vertex* myVerts = &allVerts[i * 4];
 
     Tile& t = _tiles[i];
@@ -160,7 +160,7 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
   }
 
   // flatten flat tiles, prop up walls, calulate rockmask, invert, calc normals.
-  for (int i = 0; i < _tiles.size(); ++i) {
+  for (size_t i = 0; i < _tiles.size(); ++i) {
     Tile& t = _tiles[i];
     const idx tp = TilePos(i, levelSize);
     uint16_t* myIndices = &allIndices[i * 6];
@@ -272,9 +272,9 @@ void Level::Triangulate2(std::vector<Game::Vertex>& allVerts, std::vector<uint16
     // v.p.z = 0;
   }
 
-  //const auto cnt = static_cast<uint16_t>(allVerts.size());
-  //std::transform(dbgCubeInd.begin(), dbgCubeInd.end(), std::back_inserter(allIndices), [cnt](auto& c) { return c + cnt; });
-  //allVerts.insert(allVerts.end(), dbgV.begin(), dbgV.end());
+  // const auto cnt = static_cast<uint16_t>(allVerts.size());
+  // std::transform(dbgCubeInd.begin(), dbgCubeInd.end(), std::back_inserter(allIndices), [cnt](auto& c) { return c + cnt; });
+  // allVerts.insert(allVerts.end(), dbgV.begin(), dbgV.end());
 
   std::cout << "WamBam" << std::endl;
 }

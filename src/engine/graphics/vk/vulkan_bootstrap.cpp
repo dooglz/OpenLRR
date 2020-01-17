@@ -331,7 +331,9 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
                                                  vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
                                              debugCallback, nullptr);
     // instance.createDebugUtilsMessengerEXT(createInfo); //broken?
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+
+    PFN_vkCreateDebugUtilsMessengerEXT func =
+        reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
     if (debugMessenger != nullptr && func != nullptr &&
         func(instance, reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT*>(&createInfo), nullptr, debugMessenger) == VK_SUCCESS) {
       std::cout << "Created DebugUtils Messenger" << std::endl;
