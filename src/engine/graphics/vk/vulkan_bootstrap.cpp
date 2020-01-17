@@ -93,7 +93,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
   return VK_FALSE;
 }
 
-QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, const vk::SurfaceKHR& surface) {
+QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
   QueueFamilyIndices indices;
   std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
   int i = 0;
@@ -129,7 +129,7 @@ bool checkDeviceExtensionSupport(const vk::PhysicalDevice& pdevice) {
   return requiredExtensions.empty();
 }
 
-vk::PhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurfaceKHR& surface) {
+vk::PhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const vk::SurfaceKHR& surface) {
   std::vector<vk::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
 
   if (devices.empty()) {
@@ -180,7 +180,7 @@ vk::PhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const VkSurf
   return BestGPU;
 }
 
-vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, vk::Queue& graphicsQueue,
+vk::Device createLogicalDevice(const vk::PhysicalDevice& physicalDevice, const vk::SurfaceKHR& surface, vk::Queue& graphicsQueue,
                                vk::Queue& presentQueue) {
   QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
 
@@ -234,7 +234,7 @@ CmdPool::CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device&
 }
 
 CmdPool::~CmdPool() {
-  vkDestroyCommandPool(_logicalDevice, commandPool, nullptr);
+  _logicalDevice.destroyCommandPool(commandPool);
   // commandBuffers.clear();
 }
 
@@ -257,9 +257,9 @@ SyncObjects::SyncObjects(const vk::Device& device, const size_t swapChainImagesC
 
 SyncObjects::~SyncObjects() {
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vkDestroySemaphore(_logicalDevice, renderFinishedSemaphores[i], nullptr);
-    vkDestroySemaphore(_logicalDevice, imageAvailableSemaphores[i], nullptr);
-    vkDestroyFence(_logicalDevice, inFlightFences[i], nullptr);
+    _logicalDevice.destroySemaphore(renderFinishedSemaphores[i]);
+    _logicalDevice.destroySemaphore(imageAvailableSemaphores[i]);
+    _logicalDevice.destroyFence(inFlightFences[i]);
   }
   imageAvailableSemaphores.clear();
   renderFinishedSemaphores.clear();
@@ -351,18 +351,19 @@ ContextInfo::ContextInfo()
 
 ContextInfo::~ContextInfo() {
   std::cout << "Goodbye from Context" << std::endl;
-  vkDestroyDevice(device, nullptr);
+  device.destroy();
   device = nullptr;
   graphicsQueue = nullptr;
   presentQueue = nullptr;
-  vkDestroySurfaceKHR(instance, surface, nullptr);
+  instance.destroySurfaceKHR(surface);
+  surface = nullptr;
   if (debugMessenger != nullptr) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
     if (func != nullptr) {
       func(instance, debugMessenger, nullptr);
     }
   }
-  vkDestroyInstance(instance, nullptr);
+  instance.destroy();
 }
 
 VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, std::vector<vk::Image>& swapChainImages,
@@ -484,12 +485,13 @@ SwapChainInfo::~SwapChainInfo() {
 
   if (!swapChainFramebuffers.empty()) {
     for (auto framebuffer : swapChainFramebuffers) {
-      vkDestroyFramebuffer(_logicalDevice, framebuffer, nullptr);
+      _logicalDevice.destroyFramebuffer(framebuffer);
     }
+    swapChainFramebuffers.clear();
   }
   for (auto imageView : swapChainImageViews) {
-    vkDestroyImageView(_logicalDevice, imageView, nullptr);
+    _logicalDevice.destroyImageView(imageView);
   }
   swapChainImages.clear();
-  vkDestroySwapchainKHR(_logicalDevice, swapChain, nullptr);
+  _logicalDevice.destroySwapchainKHR(swapChain);
 }
