@@ -362,7 +362,8 @@ void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, 
 }
 
 void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, uint32_t index, const vkRenderableItem* me) {
-  assert(_descriptorSets.size() >= index);
+assert(_descriptorSets.size() >= index);
+const size_t baseSize =sizeof(vLit_object_UniformBufferObject);
   const uint32_t size = (uint32_t)(alignedSize(sizeof(vLit_object_UniformBufferObject), device_minUniformBufferOffsetAlignment));
   const uint32_t offset = size * getRIUniformOffset(me);
 

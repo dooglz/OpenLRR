@@ -3,6 +3,7 @@
 //
 
 #pragma once
+
 #include "../../../game/game_graphics.h"
 #include <functional>
 #include <glm/glm.hpp>
@@ -45,13 +46,16 @@ extern uint32_t device_maxDescriptorSetUniformBuffersDynamic;
 inline size_t alignedSize(size_t sz, size_t align) { return ((sz + align - 1) / align) * align; }
 
 vk::Buffer createBuffer(const vk::Device& device, const vk::DeviceSize size, vk::BufferUsageFlags usage);
+
 vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::MemoryPropertyFlags& properties,
                                         const vk::Buffer& buffer, vk::DeviceSize* ds_ret = nullptr);
 
 // things that exist for whole applicaiton
 struct ContextInfo {
   ContextInfo();
+
   ~ContextInfo();
+
   vk::Instance instance;
   vk::SurfaceKHR surface;
   vk::PhysicalDevice physicalDevice;
@@ -67,24 +71,32 @@ struct ContextInfo {
   };
   const PhyDevSurfKHR deviceKHR;
 };
+
 struct CmdPool {
   vk::CommandPool commandPool;
+
   CmdPool(const ContextInfo::PhyDevSurfKHR& PhyDevSurf, const vk::Device& device);
+
   ~CmdPool();
 
 private:
   const vk::Device& _logicalDevice;
 };
+
 // Things that change based on render conditions
 struct SwapChainInfo {
   SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice);
+
   ~SwapChainInfo();
+
   std::vector<vk::Image> swapChainImages;
   vk::Format swapChainImageFormat;
   vk::Extent2D swapChainExtent;
   const vk::SwapchainKHR swapChain;
   const std::vector<vk::ImageView> swapChainImageViews;
+
   void InitFramebuffers(const vk::RenderPass& renderPass);
+
   std::vector<vk::Framebuffer> swapChainFramebuffers;
 
 private:
@@ -100,7 +112,9 @@ struct SyncObjects {
   std::vector<vk::Fence> imagesInFlight;
   size_t currentFrame = 0;
   static const int MAX_FRAMES_IN_FLIGHT = 2;
+
   SyncObjects(const vk::Device& device, const size_t swapChainImagesCount);
+
   ~SyncObjects();
 
 private:
@@ -126,13 +140,17 @@ struct Vertex : public VertexDataFormat<Vertex> {
   glm::vec3 color;
   glm::vec3 normal;
   glm::vec3 barry;
+
   // Vertex(glm::vec2 p, glm::vec3 c) : pos{p}, color{c} {};
   Vertex(glm::vec3 p, glm::vec3 c, glm::vec3 n = glm::vec3(0.f), glm::vec3 b = glm::vec3(0.f)) : pos{p}, color{c}, normal{n}, barry{b} {};
+
   Vertex(const Game::Vertex& v) : Vertex{v.p, v.c, v.n} {};
+
   static const vk::VertexInputBindingDescription* getBindingDescription() {
     static vk::VertexInputBindingDescription b(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
     return &b;
   };
+
   static const std::array<vk::VertexInputAttributeDescription, 4>* getAttributeDescriptions() {
     const static std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions = {
         // eR32G32B32A32Sfloat
@@ -157,14 +175,17 @@ struct VertexBuffer {
   const vk::DeviceSize size_index;
 
   VertexBuffer(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::DeviceSize size_vertex, const vk::DeviceSize size_index);
+
   ~VertexBuffer();
 
   void UploadVertex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue);
+
   void UploadIndex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue);
 
   // void CopyBuffer(const vk::CommandPool& cmdpool, const vk::Device& device, vk::Queue& graphicsQueu);
   static void CopyBufferGeneric(const vk::Buffer& srcBuffer, vk::Buffer& dstBuffer, const vk::DeviceSize size, const vk::CommandPool& cmdpool,
                                 const vk::Device& device, vk::Queue& graphicsQueue);
+
   static void UploadGeneric(void const* inputdata, size_t uploadSize, vk::Buffer& buffer, const vk::Device& device,
                             const vk::PhysicalDevice& physicalDevice, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue);
 
@@ -174,19 +195,24 @@ private:
 };
 
 void RebuildSwapChain();
+
 // returns -1 if swapchain needs to be rebuilt.
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync);
 
 // GLFW bridge, TODO make interface headder
 VkSurfaceKHR CreateVKWindowSurface(vk::Instance& instance);
+
 // TODO, wrap in class
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
 
 struct Uniform {
   std::vector<vk::Buffer> uniformBuffers;
   std::vector<vk::DeviceMemory> uniformBuffersMemory;
+
   Uniform(size_t uboSize, size_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice);
+
   ~Uniform();
+
   void updateUniformBuffer(uint32_t currentImage, const void* uboData, uint32_t which = 0);
 
 private:
@@ -198,35 +224,49 @@ private:
 template <typename T> class PackedUniform {
 public:
   PackedUniform(uint32_t framebuffer_sets, uint32_t qty, const vk::Device& device, const vk::PhysicalDevice& physicalDevice)
-      : _esize{sizeof(T)}, _qty{qty}, _totalSize{_esize * _qty}, _framebuffer_sets{framebuffer_sets}, _logicalDevice(device) {
+      : _esize{sizeof(T)}, _qty{qty}, _totalSize{_esize * _qty}, _framebuffer_sets{framebuffer_sets},
+        _logicalDevice(device), _esizeDevice{(uint32_t)(alignedSize(_esize, device_minUniformBufferOffsetAlignment))}, _totalDeviceSize{_esizeDevice *
+                                                                                                                                        _qty} {
     uniformBuffers.resize(_qty);
     _uniformBuffersMemory.resize(_qty);
     _cpuCopy.resize(_framebuffer_sets);
     for (size_t i = 0; i < _framebuffer_sets; i++) {
-      uniformBuffers[i] = createBuffer(device, _totalSize, vk::BufferUsageFlagBits::eUniformBuffer);
+      uniformBuffers[i] = createBuffer(device, _totalDeviceSize, vk::BufferUsageFlagBits::eUniformBuffer);
       _uniformBuffersMemory[i] = AllocateBufferOnDevice(
           device, physicalDevice, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i]);
     }
     std::cout << "Created " << _framebuffer_sets << " sets of " << _qty << " packed uniforms of size : " << _esize << " - " << _totalSize
-              << std::endl;
+              << " onGPU:" << _totalDeviceSize << std::endl;
   };
+
   T& operator[](int i) { return _cpuCopy[i]; };
+
   ~PackedUniform() {
     for (size_t i = 0; i < _framebuffer_sets; i++) {
       _logicalDevice.destroyBuffer(uniformBuffers[i]);
       _logicalDevice.freeMemory(_uniformBuffersMemory[i]);
     }
   }
+
   void sendToGpu(uint32_t currentImage) {
-    auto data = _logicalDevice.mapMemory(_uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
-    memcpy(data, _cpuCopy.data(), _totalSize);
+    void* data = _logicalDevice.mapMemory(_uniformBuffersMemory[currentImage], 0, VK_WHOLE_SIZE);
+    if (_esizeDevice == _esize) {
+      memcpy(data, _cpuCopy.data(), _totalSize);
+    } else {
+      for (uint32_t i = 0; i < _qty; ++i) {
+        void* ptr = (char*)data + (i * _esizeDevice);
+        memcpy(ptr, &(_cpuCopy[i]), _esize);
+      }
+    }
     _logicalDevice.unmapMemory(_uniformBuffersMemory[currentImage]);
   };
+
   void sendToGpu() {
     for (size_t i = 0; i < _framebuffer_sets; i++) {
       sendToGpu(i);
     }
   }
+
   std::vector<vk::Buffer> uniformBuffers;
 
 private:
@@ -235,6 +275,8 @@ private:
   const uint32_t _qty;
   const size_t _esize;
   const size_t _totalSize;
+  const uint32_t _esizeDevice;
+  const uint32_t _totalDeviceSize;
 
   std::vector<vk::DeviceMemory> _uniformBuffersMemory;
   std::vector<T> _cpuCopy;
@@ -242,7 +284,9 @@ private:
 
 struct DescriptorSetLayout {
   vk::DescriptorSetLayout descriptorSetLayout;
+
   DescriptorSetLayout(const vk::Device& device, const std::vector<vk::DescriptorSetLayoutBinding>& bindings);
+
   ~DescriptorSetLayout();
 
 private:
@@ -251,7 +295,9 @@ private:
 
 struct DescriptorPool {
   vk::DescriptorPool descriptorPool;
+
   DescriptorPool(const vk::Device& device, uint32_t frameCount, uint32_t descriptorCount);
+
   ~DescriptorPool();
 
 private:
@@ -264,38 +310,51 @@ struct CmdBuffers {
     const uint32_t vcount;
     const std::function<void(const vk::CommandBuffer&)> descriptorSetFunc;
   };
+
   struct commandBufferCollection {
     vk::CommandBuffer commandBuffer;
     std::set<const VertexBuffer*> referencedVB;
     size_t hashedState = 0;
     vk::Fence* fence = nullptr;
+
     void Reset(const vk::Device& device);
   };
+
   std::vector<commandBufferCollection> commandBuffers;
+
   //  std::vector<size_t> commandBufferStates;
   CmdBuffers(const vk::Device& device, const vk::CommandPool& pool, size_t amount);
+
   void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, const VertexBuffer& vbuf, uint32_t vcount,
               std::function<void(const vk::CommandBuffer&)> descriptorSetFunc, uint32_t index);
+
   void Record(const vk::Device& device, const vk::RenderPass& renderPass, const vk::Extent2D& swapChainExtent,
               const std::vector<vk::Framebuffer>& swapChainFramebuffers, const Pipeline& pipeline, std::vector<RenderableToken> tokens,
               uint32_t index);
+
   // wipe any commandlist that includes this VertexBuffer.
   static void invalidate(const VertexBuffer* vbuf);
+
   ~CmdBuffers();
 
 protected:
   void RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer, const vk::PipelineLayout& pipelineLayout,
                       std::function<void(const vk::CommandBuffer&)> descriptorSetFunc);
+
   static std::set<CmdBuffers*> _all;
   const vk::Device& _logicalDevice;
 };
 
 struct OneOffCmdBuffer {
   OneOffCmdBuffer() = delete;
+
   vk::CommandBuffer commandBuffer;
+
   OneOffCmdBuffer(const vk::Device& device, const vk::CommandPool& pool);
+
   void submit(vk::Queue& queue);
+
   ~OneOffCmdBuffer();
 
 private:
@@ -308,6 +367,7 @@ struct TextureImage {
   TextureImage(const vk::Device& device, const vk::PhysicalDevice& pdevice, const vk::CommandPool& pool, vk::Queue& queue);
 
   ~TextureImage();
+
   vk::ImageView _imageView;
   vk::Sampler _imageSampler;
 
@@ -323,7 +383,9 @@ private:
 
   void createImage(const vk::PhysicalDevice& pdevice, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
                    vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, vk::DeviceMemory& imageMemory);
+
   void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+
   void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 };
 
