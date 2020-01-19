@@ -396,8 +396,8 @@ void vLitPipeline::prepFrame(uint32_t index) {
   vLit_global_UniformBufferObject uniformData = {};
   uniformData.view = Engine::getViewMatrix();
   uniformData.proj = Engine::getProjectionMatrix();
+  uniformData.eyePosition = glm::vec4(Engine::getCamPos(), 0);
   uniformData.pointLight = glm::vec4(Engine::getLightPos(), 0);
-  uniformData.lightDir = glm::vec4(0.0f);
   _globalUniform->updateUniformBuffer(index, &uniformData);
   // send locals down - should laready be internally updated
   _modelUniform->sendToGpu(index);

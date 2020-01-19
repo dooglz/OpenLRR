@@ -29,7 +29,7 @@ struct UniformBufferObject {
 struct vLit_global_UniformBufferObject {
   glm::mat4 view;
   glm::mat4 proj;
-  glm::vec4 lightDir;
+  glm::vec4 eyePosition;
   glm::vec4 pointLight;
 };
 
