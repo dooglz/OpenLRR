@@ -10,7 +10,7 @@
 layout(binding = 0, set=vLIT_GLOBAL_UBO_BINDING) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
-  vec4 lightDir;
+  vec4 eyePosition;
   vec4 pointLight;
 }
 gubo;
@@ -24,7 +24,7 @@ layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 barry;
 layout(location = 4) in vec3 fragVert;
 flat layout(location = 5) in vec3 normal;
-
+layout(location = 6) in vec3 vertex_position;
 
 layout(location = 0) out vec4 outColor;
 
@@ -37,12 +37,38 @@ float edgeFactor() {
 }
 
 void main() {
-  vec3 fragPosition = fragVert;
+  const vec3 fragPosition = vertex_position;
   // calculate the vector from this pixels surface to the light source
-  vec3 surfaceToLight = gubo.pointLight.xyz - fragPosition;
+  vec3 surfacePos = fragPosition; //todo fix this for non identity model matrix
+  const vec3 surfaceToLight = gubo.pointLight.xyz - fragPosition;
+  const vec3 surfaceToCamera = normalize(gubo.eyePosition.xyz - surfacePos);
+
   // calculate the cosine of the angle of incidence
-  float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
-  brightness = clamp(brightness, 0, 1);
+  //float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
+
+
+  //diffuse
+  const float lightIntensity = 1.0f;
+  const float materialShininess = 80.0f;
+  const float lightAttenuation = 0.8f;
+  const float diffuseCoefficient = max(0.0, dot(normal, surfaceToLight));
+  const float diffuse = diffuseCoefficient * lightIntensity;
+
+  //specular
+  vec3 view_dir = normalize(gubo.eyePosition.xyz - vertex_position);
+  vec3 light_dir = normalize(gubo.pointLight.xyz - vertex_position);
+  vec3 half_vector = normalize(light_dir + view_dir);
+  float specular = pow(max(dot(normal, half_vector), 0), materialShininess);
+
+  //attenuation
+  float distanceToLight = length(gubo.pointLight.xyz - surfacePos);
+  float attenuation = 1.0 / (1.0 + lightAttenuation * pow(distanceToLight, 2));
+
+  float brightness = attenuation*(diffuse + specular);
+
+  //float brightness = dot(normal, surfaceToLight);
+  brightness = clamp(brightness, 0.0f, 1.0f);
+  //brightness = max(brightness, 0.0f);
   outColor = mix(texture(texSampler, fragTexCoord), vec4(tileColour, 1.0f), 0.5f) * brightness;
   outColor = mix(vec4(0, 0.0, 0.0, 1.0), outColor, edgeFactor());
 }

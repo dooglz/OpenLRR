@@ -6,7 +6,7 @@
 layout(binding = 0, set = vLIT_GLOBAL_UBO_BINDING) uniform vLit_global_UniformBufferObject {
   mat4 view;
   mat4 proj;
-  vec4 lightDir;
+  vec4 eyePosition;
   vec4 pointLight;
 }
 gubo;
@@ -24,10 +24,12 @@ layout(location = 1) out vec3 tileColour;
 layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 outBarry;
 layout(location = 4) out vec3 fragVert;
+layout(location = 6) out vec3 vertex_position;
 flat layout(location = 5) out vec3 outNormal;
 
 void main() {
   fragVert = inPosition;
+  vertex_position = (mubo.model * vec4(inPosition, 1)).xyz;
   outNormal = inNormal;
   const mat4 mvp = gubo.proj * gubo.view * mubo.model;
   gl_Position = mvp * vec4(inPosition, 1.0);
