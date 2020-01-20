@@ -1,17 +1,14 @@
 //
 // Created by Sam Serrels on 30/11/2019.
 //
-
 #include "vulkan_pipeline.h"
 #include "vulkan.h"
 #include "vulkan_internals.h"
-
 #include "../../Engine.h"
 #include <fstream>
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
-#include <vulkan/vulkan.hpp>
-
+//#include <vulkan/vulkan.hpp>
 uint32_t device_minUniformBufferOffsetAlignment;
 uint32_t device_maxDescriptorSetUniformBuffersDynamic;
 
@@ -48,8 +45,8 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   auto vertShaderCode = readFile("res/shaders/" + shaderName + ".vert.spv");
   auto fragShaderCode = readFile("res/shaders/" + shaderName + ".frag.spv");
 
-  VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, device);
-  VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, device);
+  vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode, device);
+  vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode, device);
 
   vk::PipelineShaderStageCreateInfo vertShaderStageInfo = {};
   vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
@@ -144,8 +141,10 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineInfo);
   std::cout << "Pipeline created, Shader: " << shaderName << std::endl;
 
-  vkDestroyShaderModule(device, fragShaderModule, nullptr);
-  vkDestroyShaderModule(device, vertShaderModule, nullptr);
+  device.destroyShaderModule(fragShaderModule);
+  fragShaderModule = nullptr;
+  device.destroyShaderModule(vertShaderModule);
+  vertShaderModule = nullptr;
 }
 
 Pipeline::~Pipeline() {
@@ -153,8 +152,8 @@ Pipeline::~Pipeline() {
   for (auto& dsl : _descriptorSetLayouts) {
     _logicalDevice.destroyDescriptorSetLayout(dsl);
   }
-  vkDestroyPipeline(_logicalDevice, graphicsPipeline, nullptr);
-  vkDestroyPipelineLayout(_logicalDevice, pipelineLayout, nullptr);
+  _logicalDevice.destroyPipeline(graphicsPipeline);
+  _logicalDevice.destroyPipelineLayout(pipelineLayout);
 }
 
 vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat) {

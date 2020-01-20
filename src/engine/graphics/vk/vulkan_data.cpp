@@ -14,7 +14,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <glm/gtx/rotate_vector.hpp>
 #include <stb_image.h>
-#include <vulkan/vulkan.hpp>
+//#include <vulkan/vulkan.hpp>
 // size = sizeof(vertices[0]) * vertices.size();
 
 uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties, const vk::PhysicalDevice& pdevice) {
@@ -46,7 +46,7 @@ vk::DeviceMemory AllocateBufferOnDevice(const vk::Device& device, const vk::Phys
   allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties, pdevice);
   vk::DeviceMemory devmem = device.allocateMemory(allocInfo);
   // vkBindBufferMemory(device, buffer, devmem, 0);
-  std::cout << "Buffer created on device, Size: " << memRequirements.size << " " << devmem << std::endl;
+  std::cout << "Buffer created on device, Size: " << memRequirements.size << " " << static_cast<VkDeviceMemory>(devmem) << std::endl;
 
   device.bindBufferMemory(buffer, devmem, 0);
   if (ds_ret != nullptr) {
@@ -92,7 +92,7 @@ void VertexBuffer::UploadGeneric(void const* inputdata, size_t uploadSize, vk::B
 
   device.destroyBuffer(stagingBuffer);
   device.freeMemory(stagingBufferMemory);
-  std::cout << "Buffer Freed " << stagingBufferMemory << std::endl;
+  std::cout << "Buffer Freed " << static_cast<VkDeviceMemory>(stagingBufferMemory) << std::endl;
 }
 
 void VertexBuffer::UploadVertex(void const* inputdata, size_t uploadSize, const vk::CommandPool& cmdpool, vk::Queue& graphicsQueue) {

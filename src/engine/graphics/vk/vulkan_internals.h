@@ -58,7 +58,7 @@ struct ContextInfo {
   vk::Queue graphicsQueue;
   vk::Queue presentQueue;
   vk::Device device; // AKA logical device
-  VkDebugUtilsMessengerEXT debugMessenger;
+  vk::DebugUtilsMessengerEXT debugMessenger;
 
   // It's common that these two things are needed frequently
   struct PhyDevSurfKHR {

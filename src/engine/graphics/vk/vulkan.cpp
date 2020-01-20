@@ -1,5 +1,5 @@
 //
-// Created by Sam Serrels on 30/11/2019.
+// Created by Sam Serrels on 30/11/2019.DebugReport
 //
 
 #include "vulkan.h"
@@ -10,7 +10,7 @@
 #include <functional>
 #include <iostream>
 #include <unordered_map>
-#include <vulkan/vulkan.hpp>
+//#include <vulkan/vulkan.hpp>
 
 std::unique_ptr<ContextInfo> ctx;
 std::unique_ptr<SwapChainInfo> swapchain;

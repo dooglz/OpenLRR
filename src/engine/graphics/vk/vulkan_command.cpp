@@ -8,7 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <set>
-#include <vulkan/vulkan.hpp>
+//#include <vulkan/vulkan.hpp>
 
 void CmdBuffers::RecordCommands(const VertexBuffer& vbuf, uint32_t count, const vk::CommandBuffer& cmdBuffer,
                                 const vk::PipelineLayout& pipelineLayout, std::function<void(const vk::CommandBuffer&)> descriptorSetFunc) {
@@ -61,7 +61,7 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
   }
 
   const vk::CommandBuffer& cb = commandBuffers[index].commandBuffer;
-  std::cout << "commandBuffer " << cb << " Recording" << std::endl;
+  std::cout << "commandBuffer " << static_cast<VkCommandBuffer>(cb) << " Recording" << std::endl;
   // commandBuffers[index].reset(vk::CommandBufferResetFlags());
   // commandBufferStates[index] = &pipeline;
 
@@ -107,7 +107,7 @@ void CmdBuffers::invalidate(const VertexBuffer* vbuf) {
     for (auto& cbufferC : cbuffer->commandBuffers) {
       if (cbufferC.referencedVB.find(vbuf) != cbufferC.referencedVB.end()) {
         cbufferC.Reset(cbuffer->_logicalDevice);
-        std::cout << "commandBuffer " << cbufferC.commandBuffer << " Invlalidated" << std::endl;
+        std::cout << "commandBuffer " << static_cast<VkCommandBuffer>(cbufferC.commandBuffer) << " Invlalidated" << std::endl;
       }
     }
   }

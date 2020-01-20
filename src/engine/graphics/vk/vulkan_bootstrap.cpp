@@ -9,7 +9,7 @@
 #include <set>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan.hpp>
+//#include <vulkan/vulkan.hpp>
 
 // VkInfo* info;
 
@@ -85,6 +85,7 @@ const char* checkValidationLayerSupport() {
   }
   return "";
 }
+
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                     VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -167,7 +168,7 @@ vk::PhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const vk::Su
         }
       }
     }
-    std::cout << "Addr: " << g << " Device " << dp.deviceID << " - " << dp.deviceName << " - " << dp.driverVersion
+    std::cout << "Addr: " << &g << " Device " << dp.deviceID << " - " << dp.deviceName << " - " << dp.driverVersion
               << " vram: " << BytesToString(memsize) << "\n";
   }
   if (BestGPU == vk::PhysicalDevice(nullptr)) {
@@ -176,7 +177,7 @@ vk::PhysicalDevice pickPhysicalDevice(const vk::Instance& instance, const vk::Su
   vk::PhysicalDeviceProperties props = BestGPU.getProperties();
   device_minUniformBufferOffsetAlignment = (uint32_t)props.limits.minUniformBufferOffsetAlignment;
   device_maxDescriptorSetUniformBuffersDynamic = props.limits.maxDescriptorSetUniformBuffersDynamic;
-  std::cout << "Using Device " << BestGPU << std::endl;
+  std::cout << "Using Device " << &BestGPU << std::endl;
   return BestGPU;
 }
 
@@ -267,7 +268,7 @@ SyncObjects::~SyncObjects() {
   imagesInFlight.clear();
 }
 
-vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) {
+vk::Instance CreateInstance(vk::DebugUtilsMessengerEXT* debugMessenger = nullptr) {
   vk::ApplicationInfo appInfo;
   appInfo.pApplicationName = "OpenLRR";
   appInfo.pEngineName = "OpenLRR";
@@ -312,6 +313,7 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
   }
   // DEbug validation
   if (enableValidationLayers) {
+    
     auto createInfo =
         vk::DebugUtilsMessengerCreateInfoEXT(vk::DebugUtilsMessengerCreateFlagsEXT(),
                                              vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -322,13 +324,14 @@ vk::Instance CreateInstance(VkDebugUtilsMessengerEXT* debugMessenger = nullptr) 
     // instance.createDebugUtilsMessengerEXT(createInfo); //broken?
 
     PFN_vkCreateDebugUtilsMessengerEXT func =
-        reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+   reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+
     if (debugMessenger != nullptr && func != nullptr &&
-        func(instance, reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT*>(&createInfo), nullptr, debugMessenger) == VK_SUCCESS) {
-      std::cout << "Created DebugUtils Messenger" << std::endl;
-    } else {
+        func(static_cast<VkInstance>(instance), reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT*>(&createInfo), nullptr,
+   reinterpret_cast<VkDebugUtilsMessengerEXT*>(debugMessenger)) == VK_SUCCESS) { std::cout << "Created DebugUtils Messenger" << std::endl; } else {
       throw std::runtime_error("VK_ERROR_EXTENSION_NOT_PRESENT or nullptr!");
     }
+    
   }
 
   std::cout << "Enabled Layers:" << std::endl;
@@ -357,17 +360,18 @@ ContextInfo::~ContextInfo() {
   presentQueue = nullptr;
   instance.destroySurfaceKHR(surface);
   surface = nullptr;
-  if (debugMessenger != nullptr) {
+  
+  if (debugMessenger != vk::DebugUtilsMessengerEXT(nullptr)) {
     auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
     if (func != nullptr) {
-      func(instance, debugMessenger, nullptr);
+      func(static_cast<VkInstance>(instance), static_cast<VkDebugUtilsMessengerEXT>(debugMessenger), nullptr);
     }
   }
   instance.destroy();
 }
 
-VkSwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, std::vector<vk::Image>& swapChainImages,
-                               vk::Format& swapChainImageFormat, vk::Extent2D& swapChainExtent) {
+vk::SwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, std::vector<vk::Image>& swapChainImages,
+                                 vk::Format& swapChainImageFormat, vk::Extent2D& swapChainExtent) {
 
   SwapChainSupportDetails swapChainSupport = querySwapChainSupport(pds);
 
