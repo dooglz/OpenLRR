@@ -59,6 +59,7 @@ protected:
   std::unique_ptr<PackedUniform<vLit_object_UniformBufferObject>> _modelUniform;
   std::unique_ptr<TextureImage> _texture;
   uint32_t getRIUniformOffset(const vkRenderableItem* me);
+  uint32_t _next_offset;
   std::map<const vkRenderableItem*, uint32_t> _uniformRImapping;
 };
 #endif // OPENLRR_VULKAN_PIPELINE_H

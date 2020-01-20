@@ -2,10 +2,6 @@
 // Created by Sam Serrels on 30/11/2019.
 //
 
-#include "../../../utils.h"
-#include "../../Engine.h"
-#include "vulkan.h"
-#include "vulkan_internals.h"
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -14,6 +10,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <glm/gtx/rotate_vector.hpp>
 #include <stb_image.h>
+
+#include "../../../utils.h"
+#include "../../Engine.h"
+#include "vulkan.h"
+#include "vulkan_data.h"
+#include "vulkan_internals.h"
+
 //#include <vulkan/vulkan.hpp>
 // size = sizeof(vertices[0]) * vertices.size();
 
@@ -256,18 +259,7 @@ TextureImage::TextureImage(const vk::Device& device, const vk::PhysicalDevice& p
 
   // auto gg = pdevice.getImageFormatProperties();
   // ImageView
-  {
-    vk::ImageViewCreateInfo createInfo;
-    createInfo.image = _image;
-    createInfo.viewType = vk::ImageViewType::e2D;
-    createInfo.format = vk::Format::eR8G8B8A8Unorm;
-    createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
-    _imageView = _logicalDevice.createImageView(createInfo);
-  }
+  { _imageView = createImageView(_logicalDevice, _image, vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor); }
   // sampler
   {
     vk::SamplerCreateInfo samplerInfo;
@@ -373,4 +365,45 @@ void TextureImage::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_
 
   commandBuffer.commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
   commandBuffer.submit(_queue);
+}
+
+vk::ImageView createImageView(const vk::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags) {
+  vk::ImageViewCreateInfo viewInfo = {};
+  viewInfo.image = image;
+  viewInfo.viewType = vk::ImageViewType::e2D;
+  viewInfo.format = format;
+  viewInfo.subresourceRange.aspectMask = aspectFlags;
+  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.levelCount = 1;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.layerCount = 1;
+  return device.createImageView(viewInfo);
+}
+
+void createImage(const vk::PhysicalDevice& pdevice, const vk::Device& lDevice, uint32_t width, uint32_t height, vk::Format format,
+                 vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image,
+                 vk::DeviceMemory& imageMemory) {
+
+  vk::ImageCreateInfo imageInfo;
+  imageInfo.imageType = vk::ImageType::e2D;
+  imageInfo.extent.width = width;
+  imageInfo.extent.height = height;
+  imageInfo.extent.depth = 1;
+  imageInfo.mipLevels = 1;
+  imageInfo.arrayLayers = 1;
+  imageInfo.format = format;
+  imageInfo.tiling = tiling;
+  imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+  imageInfo.usage = usage;
+  imageInfo.samples = vk::SampleCountFlagBits::e1; // todo chekc this
+  imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+  image = lDevice.createImage(imageInfo);
+  vk::MemoryRequirements memRequirements = lDevice.getImageMemoryRequirements(image);
+  vk::MemoryAllocateInfo allocInfo;
+  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties, pdevice);
+
+  imageMemory = lDevice.allocateMemory(allocInfo);
+  lDevice.bindImageMemory(image, imageMemory, 0);
 }

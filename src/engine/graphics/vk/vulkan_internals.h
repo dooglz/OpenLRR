@@ -55,14 +55,13 @@ struct ContextInfo {
   ContextInfo();
 
   ~ContextInfo();
-
+  vk::DebugUtilsMessengerEXT debugMessenger;
   vk::Instance instance;
   vk::SurfaceKHR surface;
   vk::PhysicalDevice physicalDevice;
   vk::Queue graphicsQueue;
   vk::Queue presentQueue;
   vk::Device device; // AKA logical device
-  vk::DebugUtilsMessengerEXT debugMessenger;
 
   // It's common that these two things are needed frequently
   struct PhyDevSurfKHR {
@@ -85,23 +84,22 @@ private:
 
 // Things that change based on render conditions
 struct SwapChainInfo {
-  SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice);
-
+  SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, const vk::RenderPass& renderPass);
   ~SwapChainInfo();
 
+  static vk::SurfaceFormatKHR getImageFormat(const ContextInfo::PhyDevSurfKHR& pds);
+  static vk::Format getDepthFormat(const vk::PhysicalDevice& physicalDevice);
+
   std::vector<vk::Image> swapChainImages;
-  vk::Format swapChainImageFormat;
-  vk::Extent2D swapChainExtent;
-  const vk::SwapchainKHR swapChain;
-  const std::vector<vk::ImageView> swapChainImageViews;
-
-  void InitFramebuffers(const vk::RenderPass& renderPass);
-
   std::vector<vk::Framebuffer> swapChainFramebuffers;
+  vk::SwapchainKHR swapChain;
+  vk::Extent2D swapChainExtent;
 
-private:
-  // A SwapChainInfo can't exist without a device anyway, and it allows us to
-  // deconstruct ourtselves
+protected:
+  std::vector<vk::ImageView> swapChainImageViews;
+  vk::Image depthImage;
+  vk::ImageView depthImageView;
+  vk::DeviceMemory depthImageMemory;
   const vk::Device& _logicalDevice;
 };
 
@@ -203,7 +201,7 @@ uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& 
 VkSurfaceKHR CreateVKWindowSurface(vk::Instance& instance);
 
 // TODO, wrap in class
-vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat);
+vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat, const vk::Format& swapChainDepthFormat);
 
 struct Uniform {
   std::vector<vk::Buffer> uniformBuffers;
@@ -254,7 +252,7 @@ public:
       memcpy(data, _cpuCopy.data(), _totalSize);
     } else {
       for (uint32_t i = 0; i < _qty; ++i) {
-        void* ptr = (char*)data + (i * _esizeDevice);
+        void* ptr = static_cast<void*>( static_cast<char*>(data) + (i * _esizeDevice));
         memcpy(ptr, &(_cpuCopy[i]), _esize);
       }
     }
@@ -335,7 +333,8 @@ struct CmdBuffers {
 
   // wipe any commandlist that includes this VertexBuffer.
   static void invalidate(const VertexBuffer* vbuf);
-
+  // wipe all cmdlists
+  static void invalidate();
   ~CmdBuffers();
 
 protected:

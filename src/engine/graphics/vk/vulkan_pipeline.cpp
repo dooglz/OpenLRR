@@ -2,9 +2,9 @@
 // Created by Sam Serrels on 30/11/2019.
 //
 #include "vulkan_pipeline.h"
+#include "../../Engine.h"
 #include "vulkan.h"
 #include "vulkan_internals.h"
-#include "../../Engine.h"
 #include <fstream>
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
@@ -118,6 +118,13 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   colorBlending.blendConstants[2] = 0.0f;
   colorBlending.blendConstants[3] = 0.0f;
 
+  vk::PipelineDepthStencilStateCreateInfo depthStencil = {};
+  depthStencil.depthTestEnable = VK_TRUE;
+  depthStencil.depthWriteEnable = VK_TRUE;
+  depthStencil.depthCompareOp = vk::CompareOp::eLess;
+  depthStencil.depthBoundsTestEnable = VK_FALSE;
+  depthStencil.stencilTestEnable = VK_FALSE;
+
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
   pipelineLayoutInfo.setLayoutCount = (uint32_t)_descriptorSetLayouts.size();
   pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
@@ -133,6 +140,7 @@ Pipeline::Pipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent
   pipelineInfo.pViewportState = &viewportState;
   pipelineInfo.pRasterizationState = &rasterizer;
   pipelineInfo.pMultisampleState = &multisampling;
+  pipelineInfo.pDepthStencilState = &depthStencil;
   pipelineInfo.pColorBlendState = &colorBlending;
   pipelineInfo.layout = pipelineLayout;
   pipelineInfo.renderPass = renderPass;
@@ -156,59 +164,13 @@ Pipeline::~Pipeline() {
   _logicalDevice.destroyPipelineLayout(pipelineLayout);
 }
 
-vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat) {
-
-  vk::AttachmentDescription colorAttachment;
-  colorAttachment.samples = vk::SampleCountFlagBits::e1;
-  colorAttachment.loadOp = vk::AttachmentLoadOp::eClear, colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
-  colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-  colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-  colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
-  colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-  colorAttachment.format = swapChainImageFormat;
-
-  vk::AttachmentReference colorAttachmentRef;
-  colorAttachmentRef.attachment = 0;
-  colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
-
-  vk::SubpassDescription subpass;
-  subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-  subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments = &colorAttachmentRef;
-
-  vk::RenderPassCreateInfo renderPassInfo;
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments = &colorAttachment;
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpass;
-
-  return device.createRenderPassUnique(renderPassInfo);
-}
-
-void vk_DestoryRenderPass(std::unique_ptr<vk::RenderPass> rp, const vk::Device& device) { device.destroyRenderPass(*rp); }
-
-void SwapChainInfo::InitFramebuffers(const vk::RenderPass& renderPass) {
-  swapChainFramebuffers.clear();
-  swapChainFramebuffers.resize(swapChainImageViews.size());
-
-  for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-    vk::ImageView attachments[] = {swapChainImageViews[i]};
-
-    vk::FramebufferCreateInfo framebufferInfo;
-    framebufferInfo.renderPass = renderPass;
-    framebufferInfo.attachmentCount = 1;
-    framebufferInfo.pAttachments = attachments;
-    framebufferInfo.width = swapChainExtent.width;
-    framebufferInfo.height = swapChainExtent.height;
-    framebufferInfo.layers = 1;
-
-    swapChainFramebuffers[i] = _logicalDevice.createFramebuffer(framebufferInfo);
-  }
-  std::cout << swapChainImageViews.size() << " framebuffers created" << std::endl;
-}
-
 uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& swapChain, SyncObjects& sync) {
-  const auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], nullptr);
+  vk::ResultValue<uint32_t> result(vk::Result::eSuccess, 0);
+  try {
+    result = device.acquireNextImageKHR(swapChain, UINT64_MAX, sync.imageAvailableSemaphores[sync.currentFrame], nullptr);
+  } catch (vk::OutOfDateKHRError const& e) {
+    result.result = vk::Result::eErrorOutOfDateKHR;
+  }
   if (result.result == vk::Result::eErrorOutOfDateKHR) {
     std::cout << "SwapChain out of date" << std::endl;
     // RebuildSwapChain();
@@ -224,7 +186,7 @@ uint32_t WaitForAvilibleImage(const vk::Device& device, const vk::SwapchainKHR& 
 }
 
 vLitPipeline::vLitPipeline(const vk::Device& device, const vk::Extent2D& swapChainExtent, const vk::RenderPass& renderPass)
-    : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), getDescriptorSetLayout(device)) {}
+    : Pipeline(device, swapChainExtent, renderPass, Vertex::getPipelineInputState(), getDescriptorSetLayout(device)), _next_offset{0} {}
 
 vLitPipeline::~vLitPipeline() {
   _texture.reset();
@@ -361,8 +323,8 @@ void vLitPipeline::generatePipelineResources(const vk::PhysicalDevice& pdevice, 
 }
 
 void vLitPipeline::BindReleventDescriptor(const vk::CommandBuffer& cmdBuffer, uint32_t index, const vkRenderableItem* me) {
-assert(_descriptorSets.size() >= index);
-const size_t baseSize =sizeof(vLit_object_UniformBufferObject);
+  assert(_descriptorSets.size() >= index);
+  const size_t baseSize = sizeof(vLit_object_UniformBufferObject);
   const uint32_t size = (uint32_t)(alignedSize(sizeof(vLit_object_UniformBufferObject), device_minUniformBufferOffsetAlignment));
   const uint32_t offset = size * getRIUniformOffset(me);
 
@@ -403,14 +365,14 @@ void vLitPipeline::prepFrame(uint32_t index) {
 }
 
 uint32_t vLitPipeline::getRIUniformOffset(const vkRenderableItem* me) {
-  static uint32_t next_offset = 0;
+
   auto search = _uniformRImapping.find(me);
   if (search != _uniformRImapping.end()) {
     return search->second;
   }
-  _uniformRImapping[me] = next_offset;
-  next_offset++;
-  if (next_offset >= _bucketSize) {
+  _uniformRImapping[me] = _next_offset;
+  _next_offset++;
+  if (_next_offset >= _bucketSize) {
     throw std::runtime_error("BAH!");
   }
   return _uniformRImapping[me];

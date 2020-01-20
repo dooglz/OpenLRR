@@ -2,13 +2,16 @@
 // Created by Sam Serrels on 30/11/2019.
 //
 #include "../../platform/platform_glfw.h"
-#include "vulkan_internals.h"
+
 #include <cmath>
 #include <iostream>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
+
+#include "vulkan_data.h"
+#include "vulkan_internals.h"
 //#include <vulkan/vulkan.hpp>
 
 // VkInfo* info;
@@ -56,6 +59,19 @@ void probe() {
   }
 }
 
+vk::Format findSupportedFormat(const vk::PhysicalDevice& device, const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
+                               vk::FormatFeatureFlags features) {
+  for (const auto& format : candidates) {
+    vk::FormatProperties props = device.getFormatProperties(format);
+    if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
+      return format;
+    } else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+  throw std::runtime_error("failed to find supported format!");
+}
+
 SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
   SwapChainSupportDetails details;
   details.capabilities = device.getSurfaceCapabilitiesKHR(surface);
@@ -85,7 +101,6 @@ const char* checkValidationLayerSupport() {
   }
   return "";
 }
-
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                     VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -313,7 +328,7 @@ vk::Instance CreateInstance(vk::DebugUtilsMessengerEXT* debugMessenger = nullptr
   }
   // DEbug validation
   if (enableValidationLayers) {
-    
+
     auto createInfo =
         vk::DebugUtilsMessengerCreateInfoEXT(vk::DebugUtilsMessengerCreateFlagsEXT(),
                                              vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -324,14 +339,15 @@ vk::Instance CreateInstance(vk::DebugUtilsMessengerEXT* debugMessenger = nullptr
     // instance.createDebugUtilsMessengerEXT(createInfo); //broken?
 
     PFN_vkCreateDebugUtilsMessengerEXT func =
-   reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+        reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
 
     if (debugMessenger != nullptr && func != nullptr &&
         func(static_cast<VkInstance>(instance), reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT*>(&createInfo), nullptr,
-   reinterpret_cast<VkDebugUtilsMessengerEXT*>(debugMessenger)) == VK_SUCCESS) { std::cout << "Created DebugUtils Messenger" << std::endl; } else {
+             reinterpret_cast<VkDebugUtilsMessengerEXT*>(debugMessenger)) == VK_SUCCESS) {
+      std::cout << "Created DebugUtils Messenger" << std::endl;
+    } else {
       throw std::runtime_error("VK_ERROR_EXTENSION_NOT_PRESENT or nullptr!");
     }
-    
   }
 
   std::cout << "Enabled Layers:" << std::endl;
@@ -360,7 +376,7 @@ ContextInfo::~ContextInfo() {
   presentQueue = nullptr;
   instance.destroySurfaceKHR(surface);
   surface = nullptr;
-  
+
   if (debugMessenger != vk::DebugUtilsMessengerEXT(nullptr)) {
     auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
     if (func != nullptr) {
@@ -370,24 +386,13 @@ ContextInfo::~ContextInfo() {
   instance.destroy();
 }
 
-vk::SwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, std::vector<vk::Image>& swapChainImages,
-                                 vk::Format& swapChainImageFormat, vk::Extent2D& swapChainExtent) {
-
+SwapChainInfo::SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice, const vk::RenderPass& renderPass)
+    : _logicalDevice{logicalDevice} {
   SwapChainSupportDetails swapChainSupport = querySwapChainSupport(pds);
 
-  vk::SurfaceFormatKHR surfaceFormat;
-  {
-    for (const auto& availableFormat : swapChainSupport.formats) {
-      if (availableFormat.format == vk::Format::eB8G8R8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-        surfaceFormat = availableFormat;
-        break;
-      }
-    }
-    if (surfaceFormat.format == vk::Format::eUndefined) {
-      surfaceFormat = swapChainSupport.formats[0];
-    }
-  }
+  vk::SurfaceFormatKHR format = getImageFormat(pds);
 
+  // Present Mode
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
   if (!ENABLE_VSYNC) {
     for (const auto& availablePresentMode : swapChainSupport.presentModes) {
@@ -398,13 +403,13 @@ vk::SwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk
     }
   }
 
+  // Extent
   VkExtent2D extent;
   {
     const auto cap = swapChainSupport.capabilities;
     if (cap.currentExtent.width != UINT32_MAX) {
       extent = cap.currentExtent;
     } else {
-
       int width, height;
       platform::GetFramebufferSize(&width, &height);
       VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
@@ -413,76 +418,84 @@ vk::SwapchainKHR createSwapChain(const ContextInfo::PhyDevSurfKHR& pds, const vk
       extent = actualExtent;
     }
   }
+  swapChainExtent = extent;
 
+  // Imagecount
   uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
   if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
     imageCount = swapChainSupport.capabilities.maxImageCount;
   }
 
-  vk::SwapchainCreateInfoKHR createInfo;
-  createInfo.surface = pds.surface;
-  createInfo.minImageCount = imageCount;
-  createInfo.imageFormat = surfaceFormat.format;
-  createInfo.imageColorSpace = surfaceFormat.colorSpace;
-  createInfo.imageExtent = extent;
-  createInfo.imageArrayLayers = 1;
-  createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+  // depth
 
-  QueueFamilyIndices indices = findQueueFamilies(pds);
-  uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-
-  if (indices.graphicsFamily != indices.presentFamily) {
-    createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-    createInfo.queueFamilyIndexCount = 2;
-    createInfo.pQueueFamilyIndices = queueFamilyIndices;
-  } else {
-    createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+  {
+    vk::Format depthFormat = getDepthFormat(pds.device);
+    createImage(pds.device, logicalDevice, swapChainExtent.width, swapChainExtent.height, depthFormat, vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
+    depthImageView = createImageView(logicalDevice, depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
   }
 
-  createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-  createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-  createInfo.presentMode = presentMode;
-  createInfo.clipped = VK_TRUE;
-  // createInfo.oldSwapchain = VK_NULL_HANDLE;
-  vk::SwapchainKHR swapChain = logicalDevice.createSwapchainKHR(createInfo, nullptr);
+  // Actual swapchain
+  {
+    vk::SwapchainCreateInfoKHR createInfo;
+    createInfo.surface = pds.surface;
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = format.format;
+    createInfo.imageColorSpace = format.colorSpace;
+    createInfo.imageExtent = extent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
 
-  swapChainImages = logicalDevice.getSwapchainImagesKHR(swapChain);
-  swapChainImageFormat = surfaceFormat.format;
-  swapChainExtent = extent;
+    QueueFamilyIndices indices = findQueueFamilies(pds);
+    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+
+    if (indices.graphicsFamily != indices.presentFamily) {
+      createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+      createInfo.queueFamilyIndexCount = 2;
+      createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    } else {
+      createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+    }
+    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+    createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+    createInfo.presentMode = presentMode;
+    createInfo.clipped = VK_TRUE;
+
+    swapChain = logicalDevice.createSwapchainKHR(createInfo, nullptr);
+    swapChainImages = logicalDevice.getSwapchainImagesKHR(swapChain);
+  }
+
+  // imageviews
+  {
+    swapChainImageViews.resize(swapChainImages.size());
+    for (uint32_t i = 0; i < swapChainImages.size(); i++) {
+      swapChainImageViews[i] = createImageView(logicalDevice, swapChainImages[i], format.format, vk::ImageAspectFlagBits::eColor);
+    }
+  }
+
+  // Framebuffers
+  {
+    swapChainFramebuffers.clear();
+    swapChainFramebuffers.resize(swapChainImageViews.size());
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+      std::array<vk::ImageView, 2> attachments = {swapChainImageViews[i], depthImageView};
+
+      vk::FramebufferCreateInfo framebufferInfo;
+      framebufferInfo.renderPass = renderPass;
+      framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+      framebufferInfo.pAttachments = attachments.data();
+      framebufferInfo.width = swapChainExtent.width;
+      framebufferInfo.height = swapChainExtent.height;
+      framebufferInfo.layers = 1;
+
+      swapChainFramebuffers[i] = _logicalDevice.createFramebuffer(framebufferInfo);
+    }
+    std::cout << swapChainImageViews.size() << " framebuffers created" << std::endl;
+  }
+
   std::cout << "Swap Chain is created: " << swapChainExtent.height << "x" << swapChainExtent.width << ", Images: " << swapChainImages.size()
             << std::endl;
-
-  return swapChain;
-}
-
-std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image>& swapChainImages, const vk::Format& swapChainImageFormat,
-                                            vk::Device logicalDevice) {
-  std::vector<vk::ImageView> swapChainImageViews;
-  swapChainImageViews.resize(swapChainImages.size());
-
-  for (size_t i = 0; i < swapChainImages.size(); i++) {
-    vk::ImageViewCreateInfo createInfo;
-    createInfo.image = swapChainImages[i];
-    createInfo.viewType = vk::ImageViewType::e2D;
-    createInfo.format = swapChainImageFormat;
-    createInfo.components.r = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.g = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.b = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-    createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
-    swapChainImageViews[i] = logicalDevice.createImageView(createInfo);
-  }
-  return swapChainImageViews;
-}
-
-SwapChainInfo::SwapChainInfo(const ContextInfo::PhyDevSurfKHR& pds, const vk::Device& logicalDevice)
-    : swapChain{createSwapChain(pds, logicalDevice, swapChainImages, swapChainImageFormat, swapChainExtent)},
-      swapChainImageViews{createImageViews(swapChainImages, swapChainImageFormat, logicalDevice)}, _logicalDevice{logicalDevice} {
-  std::cout << "Swap chain Built, " << swapChainImages.size() << " Image Views Created " << std::endl;
 }
 
 SwapChainInfo::~SwapChainInfo() {
@@ -496,6 +509,87 @@ SwapChainInfo::~SwapChainInfo() {
   for (auto imageView : swapChainImageViews) {
     _logicalDevice.destroyImageView(imageView);
   }
+  _logicalDevice.destroyImageView(depthImageView);
+  _logicalDevice.destroyImage(depthImage);
+  _logicalDevice.freeMemory(depthImageMemory);
   swapChainImages.clear();
   _logicalDevice.destroySwapchainKHR(swapChain);
 }
+
+vk::SurfaceFormatKHR SwapChainInfo::getImageFormat(const ContextInfo::PhyDevSurfKHR& pds) {
+  vk::SurfaceFormatKHR surfaceFormat;
+  auto formats = pds.device.getSurfaceFormatsKHR(pds.surface);
+  for (const auto& availableFormat : formats) {
+    if (availableFormat.format == vk::Format::eB8G8R8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+      surfaceFormat = availableFormat;
+      break;
+    }
+  }
+  if (surfaceFormat.format == vk::Format::eUndefined) {
+    surfaceFormat = formats[0];
+  }
+
+  return surfaceFormat;
+}
+
+vk::Format SwapChainInfo::getDepthFormat(const vk::PhysicalDevice& physicalDevice) {
+  return findSupportedFormat(physicalDevice, {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+                             vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+
+vk::UniqueRenderPass createRenderPass(const vk::Device& device, const vk::Format& swapChainImageFormat, const vk::Format& swapChainDepthFormat) {
+
+  vk::AttachmentDescription colorAttachment;
+  colorAttachment.samples = vk::SampleCountFlagBits::e1;
+  colorAttachment.loadOp = vk::AttachmentLoadOp::eClear, colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+  colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+  colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+  colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
+  colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+  colorAttachment.format = swapChainImageFormat;
+
+  vk::AttachmentReference colorAttachmentRef;
+  colorAttachmentRef.attachment = 0;
+  colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+  vk::AttachmentDescription depthAttachment = {};
+  depthAttachment.format = swapChainDepthFormat;
+  depthAttachment.samples = vk::SampleCountFlagBits::e1;
+  depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+  depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+  depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+  depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+  depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
+  depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+  vk::AttachmentReference depthAttachmentRef = {};
+  depthAttachmentRef.attachment = 1;
+  depthAttachmentRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+  vk::SubpassDescription subpass;
+  subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+  subpass.colorAttachmentCount = 1;
+  subpass.pColorAttachments = &colorAttachmentRef;
+  subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+  vk::SubpassDependency dependency = {};
+  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.dstSubpass = 0;
+  dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  dependency.srcAccessMask = vk::AccessFlags();
+  dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+
+  std::array<vk::AttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+  vk::RenderPassCreateInfo renderPassInfo = {};
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
+  renderPassInfo.subpassCount = 1;
+  renderPassInfo.pSubpasses = &subpass;
+  renderPassInfo.dependencyCount = 1;
+  renderPassInfo.pDependencies = &dependency;
+
+  return device.createRenderPassUnique(renderPassInfo);
+}
+
+void vk_DestoryRenderPass(std::unique_ptr<vk::RenderPass> rp, const vk::Device& device) { device.destroyRenderPass(*rp); }

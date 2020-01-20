@@ -26,7 +26,6 @@ void Game::StartUp() {
                                               RenderableItem::lit);
 
   lampRI->setUniformModelMatrix(glm::mat4(1.0f));
-
 }
 
 void Game::Tick(double dt) {
@@ -35,7 +34,8 @@ void Game::Tick(double dt) {
   glm::dmat4 t = glm::translate(glm::dmat4(1.0), Engine::getLightPos());
   glm::dmat4 r = glm::rotate(glm::dmat4(1.0), (lifetime), glm::dvec3(0.0, 0.0, 1.0));
   glm::dmat4 s = glm::scale(glm::dmat4(1.0), glm::dvec3(0.1));
-  lampRI->setUniformModelMatrix(glm::mat4(t*r*s));
+  lampRI->setUniformModelMatrix(glm::mat4(t * r * s));
+  levelRI->setUniformModelMatrix(glm::mat4(1.0f));
 }
 
 Game::Vertex* Game::getVertices(size_t& count) {

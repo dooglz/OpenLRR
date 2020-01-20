@@ -73,9 +73,12 @@ void CmdBuffers::Record(const vk::Device& device, const vk::RenderPass& renderPa
   renderPassInfo.framebuffer = swapChainFramebuffers[index];
   renderPassInfo.renderArea.offset = vk::Offset2D(0, 0);
   renderPassInfo.renderArea.extent = swapChainExtent;
-  vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
-  renderPassInfo.clearValueCount = 1;
-  renderPassInfo.pClearValues = &clearColor;
+  std::array<vk::ClearValue, 2> clearValues = {};
+  clearValues[0].color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f};
+  clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+  renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+  renderPassInfo.pClearValues = clearValues.data();
+
   cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
   cb.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
@@ -109,6 +112,14 @@ void CmdBuffers::invalidate(const VertexBuffer* vbuf) {
         cbufferC.Reset(cbuffer->_logicalDevice);
         std::cout << "commandBuffer " << static_cast<VkCommandBuffer>(cbufferC.commandBuffer) << " Invlalidated" << std::endl;
       }
+    }
+  }
+}
+void CmdBuffers::invalidate() {
+  for (auto cbuffer : _all) {
+    for (auto& cbufferC : cbuffer->commandBuffers) {
+      cbufferC.Reset(cbuffer->_logicalDevice);
+      std::cout << "commandBuffer " << static_cast<VkCommandBuffer>(cbufferC.commandBuffer) << " Reset" << std::endl;
     }
   }
 }

@@ -30,12 +30,13 @@ void RebuildSwapChain() {
   for (size_t i = 0; i < RenderableItem::PIPELINE_COUNT; i++) {
     pipelines[i].reset();
   }
-  renderPass.reset();
   swapchain.reset();
-  swapchain = std::make_unique<SwapChainInfo>(ctx->deviceKHR, ctx->device);
-  renderPass = createRenderPass(ctx->device, swapchain->swapChainImageFormat);
-  swapchain->InitFramebuffers(*renderPass);
+  renderPass.reset();
+  cmdBuffers->invalidate();
 
+  renderPass =
+      createRenderPass(ctx->device, SwapChainInfo::getImageFormat(ctx->deviceKHR).format, SwapChainInfo::getDepthFormat(ctx->deviceKHR.device));
+  swapchain = std::make_unique<SwapChainInfo>(ctx->deviceKHR, ctx->device, *renderPass);
   descriptorPool = std::make_unique<DescriptorPool>(ctx->device, static_cast<uint32_t>(swapchain->swapChainImages.size()), VLIT_BINDINGS_COUNT);
 
   // Make pipleines
