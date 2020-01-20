@@ -49,6 +49,11 @@ target_compile_features(fastNoise PUBLIC cxx_std_17)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE  ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb)
 
+add_library(imgui ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui/imgui.cpp ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui/imgui.h)
+target_include_directories(imgui SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui)
+target_compile_features(imgui PUBLIC cxx_std_17)
+
+
 #target_include_directorie, but marks libs as SYSTEM, so no warnings are shown for them
 function(target_link_libraries_system target)
   set(libs ${ARGN})
